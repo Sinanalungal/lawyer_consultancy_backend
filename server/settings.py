@@ -82,10 +82,10 @@ WSGI_APPLICATION = 'server.wsgi.application'
 AUTH_USER_MODEL ='api.CustomUser'
 
 # settings.py
-TWILIO_ACCOUNT_SID = 'AC56b8adb085c44cfa797490f452003bad'
-TWILIO_AUTH_TOKEN = '8f6e53598ae077de9ad0ae1e098f91b3'
-TWILIO_PHONE_NUMBER = '+13343779828'
-COUNTRY_CODE = '+91'
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER')
+COUNTRY_CODE = config('COUNTRY_CODE')
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -125,18 +125,7 @@ REST_FRAMEWORK = {
     )
 }
 
-# settings.py
 
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django_redis.cache.RedisCache',
-#         # 'LOCATION': 'redis://127.0.0.1:6379/1', # when localhost
-#         'LOCATION': 'redis://my-redis-container:6379/1', # using docker , that is docker name
-#         'OPTIONS': {
-#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-#         }
-#     }
-# }
 
 CACHES = {
     'default': {
