@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'api',
     'rest_framework',
     'corsheaders',
+    "graphene_django",
 ]
 
 MIDDLEWARE = [
@@ -56,6 +57,9 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
+GRAPHENE = {
+    "SCHEMA": "server.schema.schema"
+}
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -170,6 +174,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL='/media/'
 
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587 
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER =config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD =config("EMAIL_HOST_PASSWORD")
+
 CORS_ALLOW_CREDENTIALS = True
 
 
@@ -177,3 +188,5 @@ CORS_ALLOW_CREDENTIALS = True
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+DEFAULT_FROM_EMAIL =config("DEFAULT_FROM_EMAIL")

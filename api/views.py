@@ -12,6 +12,12 @@ from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django.shortcuts import get_object_or_404
+from .models import CustomUser,PasswordResetToken
+from django.utils.crypto import get_random_string
+from django.core.mail import send_mail
+from server.constants import url
+
 
 
 class MessageHandler:
@@ -156,3 +162,54 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
+
+
+
+class ForgetPasswordView(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        user = get_object_or_404(CustomUser, email=email)
+        if user:
+            token = get_random_string(length=20)
+            PasswordResetToken.objects.update_or_create(user=user, defaults={'token': token})
+            print(token)
+            reset_link = f'{url}/reset-password/{token}/'
+            send_mail(
+                'Reset Your Password [only valid for 24 hours]:',
+                f'Click the link to reset your password: {reset_link}',
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+            return Response({"message": "Forget password link sended into your Email"}, status=status.HTTP_200_OK)
+        return Response({"message": "Something Went Wrong"}, status=status.HTTP_400_BAD_REQUEST)    
+
+class ResetPasswordView(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            token = request.data.get('token')
+            new_password = request.data.get('password')
+            print(new_password)
+            print(token)
+            
+            token_obj = get_object_or_404(PasswordResetToken, token=token)
+            
+            
+            current_time = timezone.now()
+            time_difference = current_time - token_obj.created_at
+
+            if time_difference.total_seconds() > 86400: 
+                return Response({"message": "Reset token has expired"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user = token_obj.user
+            user.set_password(new_password)
+            user.save()
+            token_obj.delete()
+            print('Password reset successful')
+            return Response({"message": "Password reset successfully"}, status=status.HTTP_200_OK)
+        
+        except PasswordResetToken.DoesNotExist:
+            return Response({"message": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            return Response({"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
