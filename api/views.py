@@ -5,6 +5,7 @@ from .serializers import UserRegistrationSerializer, OtpSerializer
 from django_redis import get_redis_connection
 from .sms_utils import generate_otp
 import json
+import requests
 from django.conf import settings
 from twilio.rest import Client
 from rest_framework.permissions import IsAuthenticated
@@ -17,8 +18,9 @@ from .models import CustomUser,PasswordResetToken
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
 from server.constants import url
-
-
+from .utils import get_id_token_with_code_method_1,get_id_token_with_code_method_2
+from rest_framework_simplejwt.tokens import AccessToken
+import jwt
 
 class MessageHandler:
     """Handles sending OTP messages."""
@@ -213,3 +215,38 @@ class ResetPasswordView(APIView):
         
         except Exception as e:
             return Response({"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+def authenticate_or_create_user(email,name):
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        user = CustomUser.objects.create_user(username=email, email=email,full_name=name)
+    return user
+
+def get_jwt_token(user):
+    token = AccessToken.for_user(user)
+    additional_data = {
+        'full_name': user.full_name,
+        'phone_number': user.phone_number,
+        'email': user.email,
+        'role': user.role,
+        'is_verified': user.is_verified,
+    }
+    token.payload.update(additional_data)
+
+
+    return str(token)
+        
+class LoginWithGoogleView(APIView):
+    def post(self, request, *args, **kwargs):
+        if 'code' in request.data.keys():
+            code = request.data.get('code')
+            id_token = get_id_token_with_code_method_2(code)
+            user_email = id_token.get('email')
+            user = authenticate_or_create_user(user_email,id_token.get('name'))
+            token = get_jwt_token(user)
+            print(jwt.decode(token, algorithms=['HS256'], options={"verify_signature": False}),'this is decoded')
+            print(token)
+            return Response({'access_token': token, 'username': user_email},status=status.HTTP_200_OK)
+        else:  
+            return Response({'message':'Something went wrong'},status=status.HTTP_400_BAD_REQUEST)
