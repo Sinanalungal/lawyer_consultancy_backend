@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework_simplejwt import views as jwt_views  # Import JWT views
+from rest_framework_simplejwt import views as jwt_views 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
