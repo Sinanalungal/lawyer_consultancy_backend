@@ -282,22 +282,60 @@ class SaveDataRequestView(APIView):
         try:
             phone_number = request.data.get('phone_number')
             email = request.data.get('email')
-            if 'password' in request.data.keys():
-                password = request.data.get('password')
-                user = get_object_or_404(CustomUser, email=email)
-                user.phone_number = phone_number
-                user.set_password(password)
-                user.save()
+            otp = request.data.get('otp')
+            print(phone_number, email, otp)
+            redis_conn = get_redis_connection("default")
+            stored_otp = redis_conn.get(f"otp_{email}")
+            if stored_otp and stored_otp.decode('utf-8') == otp:
+                expiration_key = f"expiration_{email}"
+                expiration_time = redis_conn.get(expiration_key)
+                if expiration_time and float(expiration_time.decode('utf-8')) >= timezone.now().timestamp():
+                    if 'password' in request.data.keys():
+                        password = request.data.get('password')
+                        user = get_object_or_404(CustomUser, email=email)
+                        user.phone_number = phone_number
+                        user.set_password(password)
+                        user.save()
+                    else:
+                        user = get_object_or_404(CustomUser, email=email)
+                        user.phone_number = phone_number
+                        user.save()
+                    return Response({'message': 'Data saved successfully'}, status=status.HTTP_200_OK)
+                else:
+                    return  Response({'message': 'time out'}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                user = get_object_or_404(CustomUser, email=email)
-                user.phone_number = phone_number
-                user.save()
-            return Response({'message': 'Data saved successfully'}, status=status.HTTP_200_OK)
-        except:
+                return Response({'message': 'Otp is not Valid'}, status=status.HTTP_400_BAD_REQUEST)
+        except: 
             return Response({'message': 'Something wrong'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class OtpSendGoogleAuthView(APIView):
+    """Handles resending OTP."""
 
+    def post(self, request, *args, **kwargs):
+        """Handle POST request for resending OTP."""
+        email = request.data.get('email')
+        phone_number = request.data.get('phone_number')
+        redis_conn = get_redis_connection("default")
+        try:
+            otp_code = generate_otp()
+            otp_key = f"otp_{email}"
+            redis_conn.setex(otp_key, 60, str(otp_code))
+
+            # Set expiration time for OTP verification
+            expiration_key = f"expiration_{email}"
+            expiration_time = timezone.now() + timedelta(seconds=31)
+            expiration_seconds = int(expiration_time.timestamp())
+            redis_conn.setex(expiration_key, 3600, expiration_seconds)
+
+            obj = MessageHandler(phone_number, otp_code)
+            obj.send_otp_via_message()
+
+            return Response({"message": "OTP Resended Successfully", 'timer': expiration_time}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({"message": "Please Register once again "}, status=status.HTTP_408_REQUEST_TIMEOUT)
+       
 # ---------------------------------------------------------------------------------------------------------#
 
 
