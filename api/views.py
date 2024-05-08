@@ -7,7 +7,7 @@ from .sms_utils import generate_otp
 import json
 from django.conf import settings
 from twilio.rest import Client
-from rest_framework.permissions import IsAuthenticated
+# from rest_framework.permissions import IsAuthenticated  
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -19,7 +19,7 @@ from django.core.mail import send_mail
 from server.constants import url
 from .utils import get_id_token_with_code_method_1, get_id_token_with_code_method_2
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
-import jwt
+from rest_framework.permissions import AllowAny
 
 
 class MessageHandler:
@@ -224,6 +224,8 @@ class ResetPasswordView(APIView):
 
 
 class LoginWithGoogleView(APIView):
+    permission_classes = [AllowAny]  # Allow unrestricted access
+
     """Handles Google authentication."""
 
     def authenticate_or_create_user(self, email, name, password):
@@ -266,7 +268,7 @@ class LoginWithGoogleView(APIView):
             registering = False
             if user.get('status') == 'new':
                 registering = True
-
+            print(token)
             return Response({'access_token': token, 'username': user_email, 'registering': registering},
                             status=status.HTTP_200_OK)
         else:
@@ -305,7 +307,7 @@ class SaveDataRequestView(APIView):
                     return  Response({'message': 'time out'}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({'message': 'Otp is not Valid'}, status=status.HTTP_400_BAD_REQUEST)
-        except: 
+        except ValueError: 
             return Response({'message': 'Something wrong'}, status=status.HTTP_400_BAD_REQUEST)
 
 
