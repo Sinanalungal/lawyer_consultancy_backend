@@ -20,6 +20,8 @@ from server.constants import url
 from .utils import get_id_token_with_code_method_1, get_id_token_with_code_method_2
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework.permissions import AllowAny
+from django.core.exceptions import PermissionDenied
+
 
 
 class MessageHandler:
@@ -154,17 +156,20 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
     def get_token(cls, user):
-        token = super().get_token(user)
-        token['full_name'] = user.full_name
-        token['phone_number'] = user.phone_number
-        token['email'] = user.email
-        token['role'] = user.role
-        token['is_verified'] = user.is_verified
+        if user.is_verified:
+            token = super().get_token(user)
+            token['full_name'] = user.full_name
+            token['phone_number'] = user.phone_number
+            token['email'] = user.email
+            token['role'] = user.role
+            token['is_verified'] = user.is_verified
 
-        if user.phone_number == '':
-            token['registering'] = True
+            if user.phone_number == '':
+                token['registering'] = True
 
-        return token
+            return token
+        else:
+            raise PermissionDenied("User account is Blocked.")
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -243,19 +248,22 @@ class LoginWithGoogleView(APIView):
         return {'user': user, 'status': status}
 
     def get_jwt_token(self, user):
-        token = AccessToken.for_user(user)
-        refresh = RefreshToken.for_user(user)
-        additional_data = {
-            'full_name': user.full_name,
-            'phone_number': user.phone_number,
-            'email': user.email,
-            'role': user.role,
-            'is_verified': user.is_verified,
-        }
-        token.payload.update(additional_data)
-        refresh.payload.update(additional_data)
+        if user.is_verified:
+            token = AccessToken.for_user(user)
+            refresh = RefreshToken.for_user(user)
+            additional_data = {
+                'full_name': user.full_name,
+                'phone_number': user.phone_number,
+                'email': user.email,
+                'role': user.role,
+                'is_verified': user.is_verified,
+            }
+            token.payload.update(additional_data)
+            refresh.payload.update(additional_data)
 
-        return {'refresh': str(refresh), 'access': str(token)}
+            return {'refresh': str(refresh), 'access': str(token)}
+        else:
+            raise PermissionDenied('User account is Blocked')
 
     def post(self, request, *args, **kwargs):
         """Handle POST request for Google authentication."""
