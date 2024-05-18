@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializers import UserRegistrationSerializer, OtpSerializer
+from .serializers import UserRegistrationSerializer, OtpSerializer,UserUpdateSerializer,UserDetailSerializer
 from django_redis import get_redis_connection
 from .sms_utils import generate_otp
 import json
@@ -21,6 +21,8 @@ from .utils import get_id_token_with_code_method_1, get_id_token_with_code_metho
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework.permissions import AllowAny
 from django.core.exceptions import PermissionDenied
+from rest_framework import generics
+
 
 
 
@@ -158,6 +160,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         if user.is_verified:
             token = super().get_token(user)
+            token['id'] = user.id
             token['full_name'] = user.full_name
             token['phone_number'] = user.phone_number
             token['email'] = user.email
@@ -184,6 +187,7 @@ class ForgetPasswordView(APIView):
         email = request.data.get('email')
         user = get_object_or_404(CustomUser, email=email)
         if user:
+            # redis_conn = get_redis_connection("default")
             token = get_random_string(length=20)
             PasswordResetToken.objects.update_or_create(user=user, defaults={'token': token})
             reset_link = f'{url}/reset-password/{token}/'
@@ -194,8 +198,32 @@ class ForgetPasswordView(APIView):
                 [email],
                 fail_silently=False,
             )
+            
+            # redis_conn.setex(token, 86400, token)
+
             return Response({"message": "Forget password link sended into your Email"}, status=status.HTTP_200_OK)
         return Response({"message": "Something Went Wrong"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetLinkValidationCheck(APIView):
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            token = request.data.get('token')
+            # token_obj = get_object_or_404(PasswordResetToken, token=token)
+            token_obj = PasswordResetToken.objects.get(token=token)
+            current_time = timezone.now()
+            time_difference = current_time - token_obj.created_at
+
+            if time_difference.total_seconds() > 86400:
+                return Response({"message": "Invalid Token"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response({"message": "Valid Token"}, status=status.HTTP_200_OK)
+        except PasswordResetToken.DoesNotExist:
+            return Response({"message": "Invalid Token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        
 
 
 class ResetPasswordView(APIView):
@@ -206,7 +234,7 @@ class ResetPasswordView(APIView):
         try:
             token = request.data.get('token')
             new_password = request.data.get('password')
-
+            
             token_obj = get_object_or_404(PasswordResetToken, token=token)
 
             current_time = timezone.now()
@@ -236,8 +264,9 @@ class LoginWithGoogleView(APIView):
     def authenticate_or_create_user(self, email, name, password):
         status = 'existed'
         try:
+            
             user = CustomUser.objects.get(email=email)
-            if user.phone_number == '':
+            if user.phone_number == None:
                 status = 'new'
         except CustomUser.DoesNotExist:
             user = CustomUser.objects.create_user(username=email, email=email, full_name=name)
@@ -252,6 +281,7 @@ class LoginWithGoogleView(APIView):
             token = AccessToken.for_user(user)
             refresh = RefreshToken.for_user(user)
             additional_data = {
+                'id':user.id,
                 'full_name': user.full_name,
                 'phone_number': user.phone_number,
                 'email': user.email,
@@ -345,7 +375,28 @@ class OtpSendGoogleAuthView(APIView):
         except Exception as e:
             print(e)
             return Response({"message": "Please Register once again "}, status=status.HTTP_408_REQUEST_TIMEOUT)
-       
+        
+
+
+class UserDetailView(generics.RetrieveAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserDetailSerializer
+    # Optional: Add permissions if needed
+
+class UserUpdateView(generics.UpdateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserUpdateSerializer
+    # Optional: Add permissions if needed
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+    
+    
 # ---------------------------------------------------------------------------------------------------------#
 
 

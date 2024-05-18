@@ -88,3 +88,49 @@ class CustomUserViewSet(viewsets.ViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except ValueError:
             return Response({'message': 'give a valid data'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+# blog/views.py
+from rest_framework import viewsets, filters
+from rest_framework.response import Response
+from rest_framework import status
+from blog.models import Blog
+from blog.serializer import BlogSerializer
+from rest_framework.pagination import PageNumberPagination
+
+class BlogPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class BlogViewSet(viewsets.ModelViewSet):
+    queryset = Blog.objects.all()
+    serializer_class = BlogSerializer
+    pagination_class = BlogPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['title', 'description', 'content']
+    ordering_fields = ['created_at', 'title']
+
+    def get_queryset(self):
+        # if self.request.query_params.get('search')!="":
+        #     queryset = Blog.objects.filter(Q(title__icontains=self.request.query_params.get('search'))|Q(description=self.request.query_params.get('search'))|Q(content=self.request.query_params.get('search'))).all()
+        # else:
+        queryset = Blog.objects.all()
+        return queryset
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # if getattr(instance, '_prefetched_objects_cache', None):
+        #     instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
+    def perform_update(self, serializer):
+        # Custom save logic if needed
+        serializer.save()

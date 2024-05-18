@@ -23,6 +23,8 @@ from rest_framework_simplejwt.views import (
 )
 from graphene_django.views import GraphQLView
 from api.views import MyTokenObtainPairView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -32,5 +34,7 @@ urlpatterns = [
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('api/', include('api.urls')),
     path('adminside/', include('adminside.urls')),
+    path('blogsession/', include('blog.urls')),
     path("graphql/", GraphQLView.as_view(graphiql=True)),
-]
+
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

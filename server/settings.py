@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'corsheaders',
     "graphene_django",
     'api',
-    'adminside'
+    'adminside',
+    'blog'
 ]
 
 MIDDLEWARE = [
@@ -183,6 +184,7 @@ EMAIL_HOST_USER =config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD =config("EMAIL_HOST_PASSWORD")
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Default primary key field type
