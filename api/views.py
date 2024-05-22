@@ -22,6 +22,10 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework.permissions import AllowAny
 from django.core.exceptions import PermissionDenied
 from rest_framework import generics
+from django.contrib.auth import authenticate,hashers
+from django.contrib.auth.hashers import check_password
+
+
 
 
 
@@ -396,7 +400,30 @@ class UserUpdateView(generics.UpdateAPIView):
         self.perform_update(serializer)
         return Response(serializer.data)
     
-    
+class PasswordUpdate(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            user_id = request.data.get('user_id')
+            recent_password = request.data.get('recent_password')
+            new_password = request.data.get('password')
+            user = get_object_or_404(CustomUser, id=user_id)
+            
+
+            if user.check_password(recent_password):
+                print(check_password(new_password, recent_password))
+                if not check_password(new_password, recent_password):
+                    user.set_password(new_password)
+                    user.save()
+                    return Response({'message': 'Password Changed Successfully'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'message': 'New password must be different from the recent password'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'message': 'Recent password is invalid'}, status=status.HTTP_400_BAD_REQUEST)
+        except CustomUser.DoesNotExist:
+            return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'message': 'Something went wrong: {}'.format(str(e))}, status=status.HTTP_400_BAD_REQUEST)
+
 # ---------------------------------------------------------------------------------------------------------#
 
 

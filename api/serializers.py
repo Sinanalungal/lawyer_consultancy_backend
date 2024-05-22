@@ -37,28 +37,29 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             role=role,
         )
         return user
-
+    
+    
 class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id','full_name', 'email', 'phone_number', 'role', 'profile']
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    # password = serializers.CharField(write_only=True)
     profile = serializers.ImageField(required=False)
 
     class Meta:
         model = CustomUser
-        fields = ['full_name', 'email', 'phone_number','password', 'role', 'profile']
+        fields = ['full_name', 'email', 'phone_number', 'role', 'profile']
 
-    def update(self, instance, validated_data):
-    # Handle password separately to hash it before saving
-        if 'password' in validated_data and validated_data['password'] != '':
-            password = validated_data.pop('password')
-            if password and re.match(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$', password):
-                instance.set_password(password)  # Hash the password using Django's set_password method
+    # def update(self, instance, validated_data):
+    # # Handle password separately to hash it before saving
+    #     if 'password' in validated_data and validated_data['password'] != '':
+    #         password = validated_data.pop('password')
+    #         if password and re.match(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$', password):
+    #             instance.set_password(password)  # Hash the password using Django's set_password method
 
-        return super().update(instance, validated_data)
+    #     return super().update(instance, validated_data)
     
 class OtpSerializer(serializers.Serializer):
     """

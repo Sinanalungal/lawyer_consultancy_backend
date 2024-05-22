@@ -1,6 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+class Department(models.Model):
+
+    department_name = models.CharField(max_length=30, null=False, blank=False, unique=True)
+
+    def __str__(self):
+        return self.department_name
+
 class CustomUser(AbstractUser):
     """
     Custom user model extending AbstractUser.
@@ -23,6 +30,13 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
     profile=models.ImageField(upload_to='profile/',default=None, blank=False ,null=True)
     is_verified = models.BooleanField(default=True)
+    #----------------------------------------------------------------------------------------------#
+    document=models.ImageField(upload_to='lawyer_doc/',default=None, blank=False ,null=True)
+    departments = models.ManyToManyField(Department,default=None, blank=False )
+    experience = models.PositiveIntegerField(default=0, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    #----------------------------------------------------------------------------------------------#
 
 class PasswordResetToken(models.Model):
     """

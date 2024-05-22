@@ -3,11 +3,18 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from server.permissions import IsAdmin
-from api.models import CustomUser
-from .serializer import CustomUserSerializer
+from api.models import CustomUser,Department
+from .serializer import CustomUserSerializer,LawyerSerializer,DepartmentForm
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.views import APIView
 
+from rest_framework import viewsets, filters
+from rest_framework.response import Response
+from rest_framework import status
+from blog.models import Blog
+from blog.serializer import BlogSerializer
+from rest_framework.pagination import PageNumberPagination
 
 class CustomPagination(PageNumberPagination):
     page_size = 5
@@ -91,13 +98,6 @@ class CustomUserViewSet(viewsets.ViewSet):
 
 
 
-# blog/views.py
-from rest_framework import viewsets, filters
-from rest_framework.response import Response
-from rest_framework import status
-from blog.models import Blog
-from blog.serializer import BlogSerializer
-from rest_framework.pagination import PageNumberPagination
 
 class BlogPagination(PageNumberPagination):
     page_size = 5
@@ -134,3 +134,15 @@ class BlogViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         # Custom save logic if needed
         serializer.save()
+
+class AddLawyerView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = LawyerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class DepartmentViewSet(viewsets.ModelViewSet):
+    queryset = Department.objects.all()
+    serializer_class = DepartmentForm

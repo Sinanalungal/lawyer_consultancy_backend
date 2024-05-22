@@ -1,6 +1,6 @@
 # urls.py
 from django.urls import path
-from .views import UserRegistrationAPIView,ResetLinkValidationCheck,OtpVerificationView,ResendOtp,UserDetailView,UserUpdateView,ResetPasswordView,OtpSendGoogleAuthView,LoginWithGoogleView,ForgetPasswordView,SaveDataRequestView
+from .views import UserRegistrationAPIView,PasswordUpdate,ResetLinkValidationCheck,OtpVerificationView,ResendOtp,UserDetailView,UserUpdateView,ResetPasswordView,OtpSendGoogleAuthView,LoginWithGoogleView,ForgetPasswordView,SaveDataRequestView
 
 urlpatterns = [
     path('register/', UserRegistrationAPIView.as_view()),
@@ -14,4 +14,5 @@ urlpatterns = [
     path('otpsend/', OtpSendGoogleAuthView.as_view()),
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('users/<int:pk>/update/', UserUpdateView.as_view(), name='user-update'),
+    path('update_password/', PasswordUpdate.as_view(), name='user-update'),
 ]
