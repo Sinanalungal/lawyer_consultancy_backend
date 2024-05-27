@@ -8,6 +8,8 @@ class Blog(models.Model):
     image = models.ImageField(upload_to='blog/')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    checked = models.BooleanField(default=False)
+    valid=models.BooleanField(default=False)
     
 
     def __str__(self):

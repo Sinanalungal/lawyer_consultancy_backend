@@ -9,5 +9,9 @@ urlpatterns = [
     path('saved/', views.SaveAPIView.as_view(), name='save-create'),
     # path('likes/<int:pk>/', views.LikeDetailAPIView.as_view(), name='like-detail'),
     path('comments/', views.CommentCreateAPIView.as_view(), name='comment-create'),
+    path('saved-blogs/', views.UserSavedBlogs.as_view(), name='saved-blogs'),
+    path('checking-blog/', views.CheckingBlogs.as_view(), name='checking-blog'),
+    path('validate-blog/', views.ValidatingBlogs.as_view(), name='validate-blog'),
+    # path('blogpage_admin/', views.GetBlogs.as_view()),
     # path('comments/<int:pk>/', views.CommentDetailAPIView.as_view(), name='comment-detail'),
 ]

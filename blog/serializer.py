@@ -18,17 +18,17 @@ class BlogSerializer(serializers.ModelSerializer):
         data['user'] = instance.user.email
         # data['total_likes'] = self.get_likes_count(instance)
         # data['is_liked'] = self.get_is_liked(instance)
-        print(data)
+        # print(data)
         return data
 
     def get_likes_count(self, obj):
         total_count = Like.objects.filter(blog=obj, like=True).count()
-        print(total_count)
+        # print(total_count)
         return total_count
 
     def get_is_liked(self, obj):
         user = self.context['request'].user
-        print(user)
+        # print(user)
         if user.is_authenticated:
             return Like.objects.filter(user=user, blog=obj, like=True).exists()
         return False

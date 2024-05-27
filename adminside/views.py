@@ -113,10 +113,22 @@ class BlogViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'title']
 
     def get_queryset(self):
+        print('inside that')
         # if self.request.query_params.get('search')!="":
         #     queryset = Blog.objects.filter(Q(title__icontains=self.request.query_params.get('search'))|Q(description=self.request.query_params.get('search'))|Q(content=self.request.query_params.get('search'))).all()
         # else:
-        queryset = Blog.objects.all()
+        param = self.request.query_params.get('checked')
+        print(param)
+        # print(self.request.query_params.get('checked'))
+        if param == 'all':
+            print('inside the all')
+            queryset = Blog.objects.all().order_by('created_at')
+        else:
+            print('inside bool')
+            if param =='false':
+                queryset = Blog.objects.filter(checked=False).all().order_by('created_at')
+            else:
+                queryset = Blog.objects.filter(checked=True).all().order_by('created_at')
         return queryset
 
     def update(self, request, *args, **kwargs):
