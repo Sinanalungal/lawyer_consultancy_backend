@@ -23,6 +23,12 @@ class SubscriptionPlanModels(models.Model):
 class SubscriptionPlan(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     lawyer = models.ForeignKey(CustomUser,null=False,blank=False , on_delete=models.CASCADE)
+    plan = models.ForeignKey(SubscriptionPlanModels, null=False, blank=False, on_delete=models.CASCADE, related_name='subscriptions')
+    valid = models.BooleanField(default=False,null=False, blank=False)
+
+    def __str__(self) -> str:
+        return f'{self.lawyer.email} - {self.plan.name}'
+
 
 
 class Subscription(models.Model):
