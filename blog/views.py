@@ -21,9 +21,9 @@ class BlogListCreateAPIView(generics.ListCreateAPIView):
         param=self.request.query_params.get('all', False)
         # print(param,'this isi t')
         if param:
-            return Blog.objects.filter(Q(checked=True), Q(valid=True)).all().order_by('-created_at')
+            return Blog.objects.filter(Q(checked=True), Q(valid=True)).all().order_by('-id')
         user_id = self.request.user.id 
-        return Blog.objects.filter(user_id=user_id).order_by('-created_at')
+        return Blog.objects.filter(user_id=user_id).order_by('-id')
     
 
 # class GetBlogs(APIView):
@@ -41,7 +41,7 @@ class BlogListCreateAPIView(generics.ListCreateAPIView):
 
 class BlogDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
-    queryset = Blog.objects.all().order_by('-created_at')
+    queryset = Blog.objects.all().order_by('-id')
     serializer_class = BlogSerializer
     parser_classes = (MultiPartParser, FormParser)
 
@@ -135,7 +135,7 @@ class UserSavedBlogs(APIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        saved_blogs = Saved.objects.filter(user_id=user_id, saved=True).select_related('blog').all()
+        saved_blogs = Saved.objects.filter(user_id=user_id, saved=True).select_related('blog').all().order_by('-id')
         
         if not saved_blogs:
             return Response({"message": "No saved blogs found"}, status=status.HTTP_404_NOT_FOUND)
@@ -150,22 +150,22 @@ class UserSavedBlogs(APIView):
 #     # permission_classes = [IsAuthenticatedOrReadOnly]  
 
 class CommentCreateAPIView(generics.ListCreateAPIView):
-    queryset = Comment.objects.all()
+    queryset = Comment.objects.all().order_by('-id')
     serializer_class = CommentSerializer
     def get_queryset(self):
         blog_id = self.request.query_params.get('blog_id')
         print(blog_id)
         if blog_id:
-            result=Comment.objects.filter(blog_id=blog_id).all().order_by('-created_at')
+            result=Comment.objects.filter(blog_id=blog_id).all().order_by('-id')
             print(result)
             return result
         else:
-            return Comment.objects.all().order_by('created_at')
+            return Comment.objects.all().order_by('-id')
     
     # permission_classes = [IsAuthenticatedOrReadOnly] 
 
 class CommentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Comment.objects.all()
+    queryset = Comment.objects.all().order_by('-id')
     serializer_class = CommentSerializer
     # permission_classes = [IsAuthenticatedOrReadOnly] 
 

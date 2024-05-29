@@ -1,12 +1,21 @@
 from rest_framework import serializers
 from .models import Blog, Like, Comment,Saved
 from .image_serializer import Base64ImageField
+from api.models import CustomUser
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'full_name', 'profile']
 
 class BlogSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
     likes_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
+    user = UserSerializer(read_only=True)
+
 
     class Meta:
         model = Blog
@@ -15,7 +24,10 @@ class BlogSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['id'] = instance.id
-        data['user'] = instance.user.email
+        data['user'] = UserSerializer(instance.user).data
+        # data['user'] = instance.user.email
+        # data['profile'] = instance.user.profile
+        print(instance.valid)
         # data['total_likes'] = self.get_likes_count(instance)
         # data['is_liked'] = self.get_is_liked(instance)
         # print(data)
@@ -65,6 +77,8 @@ class SavedSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
     class Meta:
         model = Comment
         fields = '__all__'
@@ -72,7 +86,6 @@ class CommentSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['id'] = instance.id
-        data['user'] = instance.user.email
-        # data['profile'] = instance.user.profile
-        print(data,instance.id)
+        data['user'] = UserSerializer(instance.user).data
+        print(data, instance.id)
         return data
