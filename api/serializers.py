@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser,Department
 import re
 
 
@@ -44,6 +44,11 @@ class UserDetailSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['id','full_name', 'email', 'phone_number', 'role', 'profile']
 
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = '__all__'
+
 class UserUpdateSerializer(serializers.ModelSerializer):
     # password = serializers.CharField(write_only=True)
     profile = serializers.ImageField(required=False)
@@ -61,6 +66,19 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     #     return super().update(instance, validated_data)
     
+class LawyerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id','full_name', 'departments', 'experience', 'description', 'profile']
+
+
+class LawyerFilterSerializer(serializers.ModelSerializer):
+    departments = DepartmentSerializer(many=True, read_only=True)
+    class Meta:
+        model = CustomUser
+        fields = ['id','full_name', 'departments', 'experience', 'description', 'profile']
+
+
 class OtpSerializer(serializers.Serializer):
     """
     Serializer for OTP validation.

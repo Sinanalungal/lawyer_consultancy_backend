@@ -1,6 +1,6 @@
 # urls.py
 from django.urls import path
-from .views import UserRegistrationAPIView,PasswordUpdate,ResetLinkValidationCheck,OtpVerificationView,ResendOtp,UserDetailView,UserUpdateView,ResetPasswordView,OtpSendGoogleAuthView,LoginWithGoogleView,ForgetPasswordView,SaveDataRequestView
+from .views import UserRegistrationAPIView,LawyerFilter,DepartmentView,LawyerDetails,PasswordUpdate,ResetLinkValidationCheck,OtpVerificationView,ResendOtp,UserDetailView,UserUpdateView,ResetPasswordView,OtpSendGoogleAuthView,LoginWithGoogleView,ForgetPasswordView,SaveDataRequestView
 
 urlpatterns = [
     path('register/', UserRegistrationAPIView.as_view()),
@@ -15,4 +15,8 @@ urlpatterns = [
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('users/<int:pk>/update/', UserUpdateView.as_view(), name='user-update'),
     path('update_password/', PasswordUpdate.as_view(), name='user-update'),
+    path('lawyer-list/', LawyerDetails.as_view(), name='lawyer-details'),
+    path('departments/', DepartmentView.as_view(), name='departments'),
+    path('filter-lawyer/', LawyerFilter.as_view(), name='filter-lawyer'),
+
 ]
