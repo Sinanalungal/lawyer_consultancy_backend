@@ -157,3 +157,15 @@ class LawyerSubscriptionView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+class SubscriptionPlanAPIView(APIView):
+    def get(self, request, lawyer_id, format=None):
+        subscription_plans = SubscriptionPlan.objects.filter(lawyer__id=lawyer_id,valid=True).all()
+        print('-----------------')
+        if not subscription_plans.exists():
+            return Response({'detail': 'No subscription plans found for the specified lawyer.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serialize=SubscriptionPlanSerializer(subscription_plans, many=True)
+
+        # Return the subscription plans data as a JSON response
+        return Response(serialize.data, status=status.HTTP_200_OK)
