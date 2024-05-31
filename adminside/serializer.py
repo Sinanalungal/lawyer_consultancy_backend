@@ -40,7 +40,7 @@ class LawyerSerializer(serializers.ModelSerializer):
         
         # Generate a password using the PasswordGenerator
         pwo = PasswordGenerator()
-        pwo.excludeschars = "[]{}()<>+-"
+        pwo.excludeschars = "[]{}()<>+-_="
         pwo.minnumbers = 1
         pwo.minschars= 1
         pwo.minuchars = 1
