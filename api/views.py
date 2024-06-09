@@ -213,7 +213,6 @@ class ResetLinkValidationCheck(APIView):
     
     def post(self, request, *args, **kwargs):
         try:
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             token = request.data.get('token')
             # token_obj = get_object_or_404(PasswordResetToken, token=token)
             token_obj = PasswordResetToken.objects.get(token=token)

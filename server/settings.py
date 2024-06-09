@@ -44,9 +44,11 @@ INSTALLED_APPS = [
     'corsheaders',
     "graphene_django",
     'api',
+    'channels',
     'adminside',
     'blog',
     'subscription',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -65,6 +67,8 @@ GRAPHENE = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
 
 ROOT_URLCONF = 'server.urls'
 
@@ -84,7 +88,9 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'server.wsgi.application'
+# WSGI_APPLICATION = 'server.wsgi.application'
+ASGI_APPLICATION = 'server.asgi.application'
+
 
 AUTH_USER_MODEL ='api.CustomUser'
 
@@ -126,11 +132,17 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
     )
 }
+
 
 
 
@@ -167,6 +179,10 @@ USE_I18N = True
 
 USE_TZ = True
 
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:5173",
+# ]
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -195,3 +211,6 @@ CORS_ALLOW_ALL_ORIGINS = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DEFAULT_FROM_EMAIL =config("DEFAULT_FROM_EMAIL")
+
+STRIPE_API_KEY =  config("STRIPE_API_KEY")
+DOMAIN_URL=config("DOMAIN_URL")

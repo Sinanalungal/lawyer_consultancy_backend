@@ -14,7 +14,7 @@ class BlogSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
-    user = UserSerializer(read_only=True)
+    # user = UserSerializer(read_only=True)
 
 
     class Meta:
@@ -77,7 +77,7 @@ class SavedSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    # user = UserSerializer(read_only=True)
 
     class Meta:
         model = Comment

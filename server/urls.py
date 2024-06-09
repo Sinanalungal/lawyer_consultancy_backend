@@ -36,6 +36,7 @@ urlpatterns = [
     path('adminside/', include('adminside.urls')),
     path('blogsession/', include('blog.urls')),
     path('subscriptions/', include('subscription.urls')),
+    path('chat/', include('chat.urls')),
     path("graphql/", GraphQLView.as_view(graphiql=True)),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
