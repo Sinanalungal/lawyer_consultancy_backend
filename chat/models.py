@@ -1,29 +1,29 @@
-# from django.db import models
-# from api.models import CustomUser
-# from django.db.models.signals import post_save
-# from django.dispatch import receiver
-# # from .models import Message
-# from channels.layers import get_channel_layer
-# from asgiref.sync import async_to_sync
-# import json
-
-# class Message(models.Model):
-#     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-#     content = models.TextField()
-#     timestamp = models.DateTimeField(auto_now_add=True)
+from django.db import models
+from api.models import CustomUser
+from django.db.models import Q
 
 
-# @receiver(post_save, sender=Message)
-# def send_message_notification(sender, instance, **kwargs):
-#     channel_layer = get_channel_layer()
-#     async_to_sync(channel_layer.group_send)(
-#         "chat_group",
-#         {
-#             "type": "chat.message",
-#             "message": json.dumps({
-#                 "sender": instance.sender.username,
-#                 "content": instance.content,
-#                 "timestamp": instance.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-#             })
-#         }
-#     )
+class ThreadManager(models.Manager):
+    def by_user(self, **kwargs):
+        print(kwargs)
+        user = kwargs.get('user')
+        lookup = Q(first_person=user) | Q(second_person=user)
+        qs = self.get_queryset().filter(lookup).distinct()
+        return qs
+
+
+class Thread(models.Model):
+    first_person = models.ForeignKey(CustomUser,on_delete=models.CASCADE,null=True,blank=True,related_name='thread_first_person')
+    second_person = models.ForeignKey(CustomUser,on_delete=models.CASCADE,null=True,blank=True,related_name='thread_second_person')
+    updated = models.DateTimeField(auto_now=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    objects = ThreadManager()
+    class Meta:
+        unique_together = ['first_person', 'second_person']
+
+class ChatMessage(models.Model):
+    thread = models.ForeignKey(Thread,null=True,blank=True,on_delete=models.CASCADE,related_name='chatmessage_thread')
+    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
