@@ -9,6 +9,7 @@ class ThreadManager(models.Manager):
         user = kwargs.get('user')
         lookup = Q(first_person=user) | Q(second_person=user)
         qs = self.get_queryset().filter(lookup).distinct()
+        # print(qs,'this is the queryset of perticulat user')
         return qs
 
 
