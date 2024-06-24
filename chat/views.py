@@ -12,7 +12,8 @@ class MessagesPage(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
-        threads = Thread.objects.by_user(user=request.user)
+        threads = Thread.objects.by_user(user=request.user).filter(is_listed=True)
+        print(threads)
         # .prefetch_related('chatmessage_thread').order_by('timestamp')
         serializer = ThreadSerializer(threads, many=True, context={'request': request})
         print(serializer.data)

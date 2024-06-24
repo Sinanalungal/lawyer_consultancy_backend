@@ -1,23 +1,23 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from rest_framework import status
+from rest_framework import status,generics
 import stripe.error
-from .serializers import SubscriptionPlanModelsSerializer,SubscriptionPlanSerializer
+from .serializers import SubscriptionPlanModelsSerializer,SubscriptionPlanSerializer,SubscriptionSerializer
 from .models import SubscriptionPlanModels,SubscriptionPlan,Subscription
 from django.db.models import Q
 from rest_framework.generics import ListAPIView
 from api.models import CustomUser
 import stripe
 from django.conf import settings
-# from django.shortcuts import redirect
+from rest_framework.permissions import IsAuthenticated 
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.utils import timezone
 from django.core.mail import send_mail
-
+from chat.models import Thread
 
 
 class AdminSubscriptionView(APIView):
@@ -173,11 +173,29 @@ class SubscriptionPlanAPIView(APIView):
     def post(self, request, lawyer_id, format=None):
 
         user_id=request.data.get('user_id')
-        if Subscription.objects.filter(user__id=user_id,plan__lawyer__id=lawyer_id).exists():
-            return Response({"detail": "You already have a plan with this lawyer"}, status=status.HTTP_406_NOT_ACCEPTABLE)
-        
+        data=Subscription.objects.filter(user__id=user_id,plan__lawyer__id=lawyer_id,status = 'active')
+        # threads_of_the_user = Thread.objects.by_user(user=request.user)
+        # lawyer_obj = CustomUser.objects.get(id=lawyer_id)
+        # # print(lawyer_obj,'lawyer_obj')
+        # threads_of_the_lawyer = Thread.objects.by_user(user = lawyer_obj)
+        thread_in_both= Thread.objects.involving_both_users(user1_id=user_id,user2_id =lawyer_id)
+        # print(thread_in_both.first(),'this is the thread in both user and laawyer')
+        # print(threads_of_the_user,'threads of the user')
+        # print(threads_of_the_lawyer,'threads of the lawyer')
+
+        if data.exists():
+            if data.first().end_date > timezone.now():
+                return Response({"detail": "You already have a plan with this lawyer"}, status=status.HTTP_406_NOT_ACCEPTABLE)
+            else:
+                data_obj = data.first()
+                data_obj.status = 'inactive'
+                data_obj.save()
+                thread_of_the_lawyer_and_user = Thread.objects.involving_both_users(user1_id=user_id,user2_id =lawyer_id).first()
+                thread_of_the_lawyer_and_user.is_listed = False
+                thread_of_the_lawyer_and_user.save()
+                
         subscription_plans = SubscriptionPlan.objects.filter(lawyer__id=lawyer_id,valid=True).all()
-        print('-----------------')
+        # print('-----------------')
         if not subscription_plans.exists():
             return Response({'detail': 'No subscription plans found for the specified lawyer.'}, status=status.HTTP_404_NOT_FOUND)
         
@@ -272,6 +290,20 @@ class WebhookView(View):
                 payment_status=session.get('payment_status'),
                 created_by=user,
             )
+            subscribed_lawyer = CustomUser.objects.filter(id=plan.lawyer.pk).first()
+            print(subscribed_lawyer,'this is subscribed lawyer object')
+            thread_qs = Thread.objects.involving_both_users(user1_id=user_id,user2_id=plan.lawyer.pk)
+            print(thread_qs,'this is thread qs')
+            if (thread_qs.exists()):
+                print('entered in to the inside')
+                thread_obj=thread_qs.first()
+                print(thread_obj.is_listed)
+                thread_obj.is_listed = True
+                print(thread_obj,'this is the updated threaad obj')
+                thread_obj.save()
+            else:
+                thread_obj=Thread.objects.create(first_person=user,second_person=subscribed_lawyer)
+            # print(thread_obj,'this is thread')
             print("Subscription created:", subscription)
             send_mail(
                 'Your Transaction Is Successfull',
@@ -392,131 +424,9 @@ class WebhookView(View):
         
         return HttpResponse(status=200)
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class WebhookView(View):
-#     endpoint_secret = 'whsec_e883094ce98575db46ef700f91d94786f4b4cec88e05d6c7c3cc7c753e5543cd'
-
-    
-#     def handle_checkout_session_completed(self, event,subscription_metadata):
-#         session = event['data']['object']
-#         customer_email = session['customer_email']
-#         print(customer_email,'customer email from the handle checkout session completed')
-#         print(subscription_metadata,'this is the subscription metadata from the handle_checkout_session_completed')
-
-#     def handle_invoice_paid(self, event,subscription_metadata):
-#         invoice = event['data']['object']
-#         amount_paid = invoice['amount_paid']
-#         print(amount_paid,'amount_paid from the handle invoice paid')
-#         print(subscription_metadata,'this is the subscription metadata from the handle invoice payment event')
-
-#     def post(self, request, *args, **kwargs):
-#         payload = request.body
-#         sig_header = request.META['HTTP_STRIPE_SIGNATURE']
-#         event = None
-
-#         try:
-#             event = stripe.Webhook.construct_event(
-#             payload, sig_header, self.endpoint_secret
-#             )
-#         except ValueError as e:
-#             # Invalid payload
-#             return HttpResponse(status=400)
-#         except stripe.error.SignatureVerificationError as e:
-#             # Invalid signature
-#             return HttpResponse(status=400)
-        
-#         session = stripe.checkout.Session.retrieve(
-#             event['data']['object']['id'],
-#             expand=['line_items'],
-#         )
-
-#         line_items = session.line_items
-#         subscription_metadata = session.metadata
-#         subscription_id = session.metadata.get('subscription_id')
-#         lawyer_id = session.metadata.get('lawyer_id')
-
-#         if event['type'] == 'checkout.session.completed':
-#             print(line_items,'this is line of items')
-#             print(subscription_id,lawyer_id ,'subscription_id and lawyer_id here')
-#             self.handle_checkout_session_completed(event,subscription_metadata)
-
-#         elif event['type'] == 'invoice.paid':
-#             self.handle_invoice_paid(event,subscription_metadata)
-
-#         return HttpResponse(status=200)
-
-
-
-
-# @csrf_exempt
-# def stripe_webhook_view(request):
-#   payload = request.body
-
-#   print(payload)
-
-#   return HttpResponse(status=200)
-
-#----------------------------------------------------------------------------- 
-
-# endpoint_secret = 'whsec_...'
-
-
-# @method_decorator(csrf_exempt, name='dispatch')
-# class MyWebhookView(View):
-#     def post(self, request, *args, **kwargs):
-#         payload = request.body
-#         sig_header = request.META['HTTP_STRIPE_SIGNATURE']
-#         event = None
-
-#         try:
-#             event = stripe.Webhook.construct_event(
-#                 payload, sig_header, endpoint_secret
-#             )
-#         except ValueError as e:
-#             # Invalid payload
-#             return HttpResponse(status=400)
-#         except stripe.error.SignatureVerificationError as e:
-#             # Invalid signature
-#             return HttpResponse(status=400)
-
-#         # Handle the event based on its type
-#         if event['type'] == 'checkout.session.completed':
-#             # Handle checkout session completed event
-#             self.handle_checkout_session_completed(event)
-#         elif event['type'] == 'invoice.paid':
-#             # Handle invoice paid event
-#             self.handle_invoice_paid(event)
-
-#         return HttpResponse(status=200)
-
-#     def handle_checkout_session_completed(self, event):
-#         # Extract necessary data from the event
-#         session = event['data']['object']
-#         customer_email = session['customer_email']
-#         # Perform necessary actions, such as updating the database or sending notifications
-
-#     def handle_invoice_paid(self, event):
-#         # Extract necessary data from the event
-#         invoice = event['data']['object']
-#         amount_paid = invoice['amount_paid']
-#         # Perform necessary actions based on the event
-#-------------------------------------------------------------------------------------------------------------
-# @csrf_exempt
-# def my_webhook_view(request):
-#   payload = request.body
-#   sig_header = request.META['HTTP_STRIPE_SIGNATURE']
-#   event = None
-
-#   try:
-#     event = stripe.Webhook.construct_event(
-#       payload, sig_header, endpoint_secret
-#     )
-#   except ValueError as e:
-#     # Invalid payload
-#     return HttpResponse(status=400)
-#   except stripe.error.SignatureVerificationError as e:
-#     # Invalid signature
-#     return HttpResponse(status=400)
-
-#   # Passed signature verification
-#   return HttpResponse(status=200)
+class SubscriptionListView(generics.ListAPIView):
+    serializer_class = SubscriptionSerializer
+    permission_classes = [IsAuthenticated]
+    def get_queryset(self):
+        user = self.request.user
+        return Subscription.objects.filter(user=user).filter(status = 'active')

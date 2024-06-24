@@ -43,3 +43,16 @@ class Saved(models.Model):
     
     def __str__(self):
         return self.user.username
+    
+class Report(models.Model):
+    user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
+    blog = models.ForeignKey(Blog, null=False, blank=False, on_delete=models.CASCADE)
+    note = models.TextField(blank=False, null=False)
+    report = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('user', 'blog')  
+        
+    def __str__(self) -> str:
+        return str(self.pk)
+

@@ -12,6 +12,9 @@ urlpatterns = [
     path('saved-blogs/', views.UserSavedBlogs.as_view(), name='saved-blogs'),
     path('checking-blog/', views.CheckingBlogs.as_view(), name='checking-blog'),
     path('validate-blog/', views.ValidatingBlogs.as_view(), name='validate-blog'),
+    path('report-blog/', views.ReportBlogAPIView.as_view(), name='report-blog'),
+    path('admin-report-blog/', views.AdminReportSerializer.as_view(), name='admin-report-blog'),
+
     # path('blogpage_admin/', views.GetBlogs.as_view()),
     # path('comments/<int:pk>/', views.CommentDetailAPIView.as_view(), name='comment-detail'),
 ]

@@ -1,7 +1,7 @@
 from rest_framework import generics
 from .models import Blog, Like, Comment,Saved
-from .serializer import BlogSerializer, LikeSerializer, CommentSerializer,SavedSerializer
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from .serializer import BlogSerializer, LikeSerializer, CommentSerializer,SavedSerializer,ReportSerializer,BlogReportSerializer,BlogValidUpdateSerializer
+from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -9,6 +9,10 @@ from rest_framework.views import APIView
 from api.models import CustomUser
 from rest_framework import status
 from django.db.models import Q
+from server.permissions import IsAdmin
+from django.db.models import Count
+from rest_framework.pagination import PageNumberPagination
+
 
 
 
@@ -120,7 +124,7 @@ class ValidatingBlogs(APIView):
         blogObj.valid = not blogObj.valid
         blogObj.save()
         
-        serializer = BlogSerializer(blogObj, context={'request': request})
+        serializer = BlogReportSerializer(blogObj, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class UserSavedBlogs(APIView):
@@ -169,3 +173,53 @@ class CommentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CommentSerializer
     # permission_classes = [IsAuthenticatedOrReadOnly] 
 
+
+class ReportBlogPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class ReportBlogAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            self.permission_classes = [IsAdmin]
+        return super().get_permissions()
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        data['user'] = request.user.id 
+        serializer = ReportSerializer(data=data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Blog reported successfully"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request, *args, **kwargs):
+        blogs_with_reports = Blog.objects.annotate(report_count=Count('report')).filter(report_count__gte=5)
+        
+        paginator = ReportBlogPagination()
+        result_page = paginator.paginate_queryset(blogs_with_reports, request)
+        serializer = BlogReportSerializer(result_page, many=True, context={'request': request})
+        
+        return paginator.get_paginated_response(serializer.data)
+    
+class AdminReportSerializer(APIView):
+    def post(self, request, *args, **kwargs):
+        blog_id = request.data.get('blog_id')
+        if not blog_id:
+            return Response({"error": "blog_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            blog = Blog.objects.get(id=blog_id)
+        except Blog.DoesNotExist:
+            return Response({"error": "Blog not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = BlogValidUpdateSerializer(blog, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

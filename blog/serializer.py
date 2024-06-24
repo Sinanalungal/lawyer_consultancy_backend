@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Blog, Like, Comment,Saved
+from .models import Blog, Like, Comment,Saved,Report
 from .image_serializer import Base64ImageField
 from api.models import CustomUser
 
@@ -9,12 +9,18 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['email', 'full_name', 'profile']
 
+# class ReportSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Report
+#         fields = ['id', 'user', 'blog', 'note', 'report']
+
 class BlogSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
     likes_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
     # user = UserSerializer(read_only=True)
+    # report=ReportSerializer(read_only=True)
 
 
     class Meta:
@@ -47,7 +53,7 @@ class BlogSerializer(serializers.ModelSerializer):
     
     
     def get_is_saved(self, obj):
-        user = self.context['request'].user
+        user = self.context['request'].user 
         print(user)
         if user.is_authenticated:
             return Saved.objects.filter(user=user, blog=obj, saved=True).exists()
@@ -89,3 +95,45 @@ class CommentSerializer(serializers.ModelSerializer):
         data['user'] = UserSerializer(instance.user).data
         print(data, instance.id)
         return data
+    
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['id', 'user', 'blog', 'note', 'report']
+class BlogReportSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    likes_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
+    reports = ReportSerializer(many=True, read_only=True, source='report_set')
+
+    class Meta:
+        model = Blog
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['id'] = instance.id
+        data['user'] = UserSerializer(instance.user).data
+        return data
+
+    def get_likes_count(self, obj):
+        return Like.objects.filter(blog=obj, like=True).count()
+
+    def get_is_liked(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return Like.objects.filter(user=user, blog=obj, like=True).exists()
+        return False
+    
+    def get_is_saved(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return Saved.objects.filter(user=user, blog=obj, saved=True).exists()
+        return False  
+    
+class BlogValidUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Blog
+        fields = ['valid']
+

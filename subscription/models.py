@@ -38,8 +38,8 @@ class Subscription(models.Model):
     end_date = models.DateTimeField()
     renewal_date = models.DateTimeField()
     cancellation_date = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20)  # e.g., 'active', 'pending', 'canceled'
-    payment_method = models.CharField(max_length=50)  # e.g., 'credit card', 'paypal'
+    status = models.CharField(max_length=20)  
+    payment_method = models.CharField(max_length=50) 
     transaction_id = models.CharField(max_length=100, null=True, blank=True)
     payment_status = models.CharField(max_length=20)  # e.g., 'paid', 'pending', 'failed'
     created_by = models.ForeignKey(CustomUser, related_name='created_subscriptions', on_delete=models.SET_NULL, null=True)
