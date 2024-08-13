@@ -7,7 +7,6 @@ from .models import Thread,ChatMessage
 from datetime import datetime
 
 
-
 User = get_user_model()
 
 class ChatConsumer(AsyncWebsocketConsumer):

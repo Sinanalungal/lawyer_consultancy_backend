@@ -1,17 +1,10 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-class Department(models.Model):
-
-    department_name = models.CharField(max_length=30, null=False, blank=False, unique=True)
-
-    def __str__(self):
-        return self.department_name
-
 class CustomUser(AbstractUser):
     """
     Custom user model extending AbstractUser.
-    
+
     Fields:
     - full_name: CharField
     - email: EmailField
@@ -24,35 +17,101 @@ class CustomUser(AbstractUser):
         ('admin', 'Admin'),
         ('lawyer', 'Lawyer'),
     )
-    full_name = models.CharField(max_length=100, blank=False, null=False)
+    full_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=10,null=True ,blank=False,default=None, unique=True)
+    phone_number = models.CharField(max_length=10, null=True, blank=True, unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
-    profile=models.ImageField(upload_to='profile/',default=None, blank=False ,null=True)
+    profile_image = models.ImageField(upload_to='profile/', blank=True, null=True)
     is_verified = models.BooleanField(default=True)
-    #----------------------------------------------------------------------------------------------#
-    document=models.ImageField(upload_to='lawyer_doc/',default=None, blank=False ,null=True)
-    departments = models.ManyToManyField(Department,default=None, blank=False )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return self.full_name
+
+
+
+class Department(models.Model):
+    """
+    Model for storing department information.
+    """
+    department_name = models.CharField(max_length=30, unique=True)
+
+    def __str__(self) -> str:
+        return self.department_name
+
+class Language(models.Model):
+    """
+    Model to store languages.
+
+    Fields:
+    - name: The name of the language.
+    """
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self) -> str:
+        return self.name
+    
+
+# class LawyerProfile(models.Model):
+#     """
+#     Model to store lawyer-specific fields.
+
+#     Fields:
+#     - user: OneToOneField to CustomUser
+#     - departments: ManyToManyField to Department
+#     - experience: PositiveIntegerField for years of experience
+#     - description: TextField for a brief description
+#     - languages: ManyToManyField to Language
+#     """
+#     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='lawyer_profile')
+#     departments = models.ManyToManyField(Department, blank=True)
+#     experience = models.PositiveIntegerField(default=0, blank=True, null=True)
+#     description = models.TextField(blank=True, null=True)
+#     languages = models.ManyToManyField(Language, blank=True)
+
+#     def __str__(self) -> str:
+#         return f"Profile for {self.user.full_name}"
+
+class LawyerProfile(models.Model):
+    """
+    Model to store lawyer-specific fields.
+
+    Fields:
+    - user: OneToOneField to CustomUser
+    - departments: ManyToManyField to Department
+    - experience: PositiveIntegerField for years of experience
+    - description: TextField for a brief description
+    - languages: ManyToManyField to Language
+    - address: CharField for address
+    - city: CharField for city
+    - state: CharField for state
+    - postal_code: CharField for postal code
+    """
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='lawyer_profile')
+    departments = models.ManyToManyField(Department, blank=True)
     experience = models.PositiveIntegerField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    #----------------------------------------------------------------------------------------------#
+    languages = models.ManyToManyField(Language, blank=True)
+    
+    address = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+
+    def __str__(self) -> str:
+        return f"Profile for {self.user.full_name}"
+
 
 class PasswordResetToken(models.Model):
     """
     Model to store password reset tokens for users.
-    
-    Fields:
-    - user: OneToOneField to CustomUser
-    - token: CharField
-    - created_at: DateTimeField (auto-generated on creation)
     """
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     token = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # def __str__(self):
-    #     """
-    #     Return the email of the associated user for string representation.
-    #     """
-    #     return self.user.email
+
+    def __str__(self) -> str :
+        return f"Token for {self.user.email}"
+
+

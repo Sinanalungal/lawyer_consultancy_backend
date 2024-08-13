@@ -1,160 +1,247 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from server.permissions import IsAdmin
-from api.models import CustomUser,Department
-from .serializer import CustomUserSerializer,LawyerSerializer,DepartmentForm
-from django.db.models import Q
-from rest_framework.pagination import PageNumberPagination
+from api.models import CustomUser, Department, Language
+from .serializer import LawyerRegistrationSerializer, LawyerProfileSerializer
 from rest_framework.views import APIView
-
-from rest_framework import viewsets, filters
+from django.db import transaction
+from password_generator import PasswordGenerator
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework import status
-from blog.models import Blog
-from blog.serializer import BlogSerializer
-from rest_framework.pagination import PageNumberPagination
-
-class CustomPagination(PageNumberPagination):
-    page_size = 5
-    page_size_query_param = 'page_size'
-    max_page_size = 100
-
-class CustomUserViewSet(viewsets.ViewSet):
-    """
-    A viewset for managing CustomUser instances.
-    """
-
-    permission_classes = [IsAuthenticated, IsAdmin]
-    pagination_class = CustomPagination
-    
-    def list(self, request):
-        """
-        List all CustomUser instances or filter by role if role parameter is provided.
-
-        Args:
-            request: The request object.
-
-        Returns:
-            Response: Serialized data of CustomUser instances.
-        """
-        role_param = request.query_params.get('role')
-        search_param = request.query_params.get('search')
-        status_param = request.query_params.get('isVerified')
-        print(role_param)
-        print(search_param)
-        print(status_param)
-
-        def boolsetting(status_param):
-            if status_param == "true":
-                return True
-            elif status_param == "false":
-                return False
-            
-        if role_param and search_param != '':
-            if status_param == 'all':
-                queryset = CustomUser.objects.filter(role=role_param).filter(Q(full_name__icontains=search_param)|Q(email__icontains=search_param)|Q(phone_number__icontains=search_param)).order_by('id')
-            else:
-                queryset = CustomUser.objects.filter(role=role_param).filter(Q(full_name__icontains=search_param)|Q(email__icontains=search_param)|Q(phone_number__icontains=search_param)).filter(is_verified=boolsetting(status_param)).order_by('id')
-        elif role_param and search_param == '':
-            if status_param == 'all':
-                queryset = CustomUser.objects.filter(role=role_param).all().order_by('id')
-            else:
-                queryset = CustomUser.objects.filter(role=role_param).filter(is_verified=boolsetting(status_param)).all().order_by('id')
-        paginator=self.pagination_class()
-        result_page =  paginator.paginate_queryset(queryset,request)
-        # print(result_page)
-        serializer = CustomUserSerializer(result_page, many=True)
-        # print(serializer.data)
-        # print(paginator.get_paginated_response(serializer.data))
-        return paginator.get_paginated_response(serializer.data)
-
-    def block(self, request):
-        """
-        Block or unblock a CustomUser instance based on provided data.
-
-        Args:
-            request: The request object containing data for blocking/unblocking.
-
-        Returns:
-            Response: Serialized data of CustomUser instances after blocking/unblocking.
-        """
-        try:
-            role = request.data.get('role')
-            params = request.data.get('id')
-            print(params)
-            user = CustomUser.objects.get(id=params)
-            user.is_verified = not user.is_verified
-            serializer = CustomUserSerializer(user, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                queryset = CustomUser.objects.filter(role=role).order_by('id')
-                serializer_data = CustomUserSerializer(queryset, many=True)
-                return Response(serializer_data.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except ValueError:
-            return Response({'message': 'give a valid data'}, status=status.HTTP_404_NOT_FOUND)
 
 
 
 
-class BlogPagination(PageNumberPagination):
-    page_size = 5
-    page_size_query_param = 'page_size'
-    max_page_size = 100
+# class AddLawyerView(APIView):
+#     """
+#     API view to handle the addition of a lawyer.
 
-class BlogViewSet(viewsets.ModelViewSet):
-    queryset = Blog.objects.all()
-    serializer_class = BlogSerializer
-    pagination_class = BlogPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'description', 'content']
-    ordering_fields = ['created_at', 'title']
+#     This view handles the creation of a CustomUser with the role of 'lawyer'
+#     and their associated LawyerProfile, including departments, languages,
+#     and other related data.
+#     """
+#     permission_classes = [IsAdmin]
 
-    def get_queryset(self):
-        print('inside that')
-        # if self.request.query_params.get('search')!="":
-        #     queryset = Blog.objects.filter(Q(title__icontains=self.request.query_params.get('search'))|Q(description=self.request.query_params.get('search'))|Q(content=self.request.query_params.get('search'))).all()
-        # else:
-        param = self.request.query_params.get('checked')
-        print(param)
-        # print(self.request.query_params.get('checked'))
-        if param == 'all':
-            print('inside the all')
-            queryset = Blog.objects.all().order_by('created_at')
-        else:
-            print('inside bool')
-            if param =='false':
-                queryset = Blog.objects.filter(checked=False).all().order_by('created_at')
-            else:
-                queryset = Blog.objects.filter(checked=True).all().order_by('created_at')
-        return queryset
+#     def post(self, request):
+#         try:
+#             with transaction.atomic():
+#                 # Generate a password
+#                 pwo = PasswordGenerator()
+#                 pwo.excludeschars = "[]{}()<>+-_="
+#                 pwo.minnumbers = 1
+#                 pwo.minschars = 1
+#                 pwo.minuchars = 1
+#                 pwo.minlchars = 1
+#                 pwo.minlen = 8
+#                 pwo.maxlen = 16
+#                 password = pwo.generate()
 
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+#                 # Extract user data
+#                 user_data = {
+#                     'full_name': request.data.get('full_name'),
+#                     'email': request.data.get('email'),
+#                     'username': request.data.get('email'),
+#                     'phone_number': request.data.get('phone_number'),
+#                     'role': 'lawyer',
+#                     'profile_image': request.FILES.get('profile_image'),
+#                 }
 
-        # if getattr(instance, '_prefetched_objects_cache', None):
-        #     instance._prefetched_objects_cache = {}
+#                 # Validate user data with the serializer
+#                 user_serializer = LawyerRegistrationSerializer(data=user_data)
+#                 user_serializer.is_valid(raise_exception=True)
 
-        return Response(serializer.data)
+#                 # Create a new user instance but don't save to the database yet
+#                 user = user_serializer.save()
+#                 user.set_password(password)  # Hash the password
+#                 user.save()  # Save the user instance
 
-    def perform_update(self, serializer):
-        # Custom save logic if needed
-        serializer.save()
+#                 # Extract profile data
+#                 profile_data = {
+#                     'user': user.id,
+#                     'experience': request.data.get('experience'),
+#                     'description': request.data.get('description'),
+#                 }
+
+#                 # Create the lawyer profile
+#                 profile_serializer = LawyerProfileSerializer(data=profile_data)
+#                 profile_serializer.is_valid(raise_exception=True)
+#                 lawyer_profile = profile_serializer.save()
+
+#                 # Handle departments (ManyToManyField)
+#                 department_ids = request.data.get('department', [])
+#                 if department_ids:
+#                     if isinstance(department_ids, str):
+#                         department_ids = department_ids.strip('[]').split(',')
+#                         department_ids = [
+#                             int(dept_id) for dept_id in department_ids if dept_id.strip().isdigit()]
+#                     departments = Department.objects.filter(
+#                         id__in=list(department_ids))
+#                     lawyer_profile.departments.set(departments)
+
+#                 # Handle languages (ManyToManyField)
+#                 language_ids = request.data.get('language', [])
+#                 if language_ids:
+#                     if isinstance(language_ids, str):
+#                         language_ids = language_ids.strip('[]').split(',')
+#                         language_ids = [
+#                             int(lang_id) for lang_id in language_ids if lang_id.strip().isdigit()]
+#                     languages = Language.objects.filter(id__in=language_ids)
+#                     lawyer_profile.languages.set(languages)
+
+#                 # Send the welcome email
+#                 subject = 'Welcome to Lawyer Consultancy - Your Consultancy Account Details'
+#                 from_email = settings.EMAIL_HOST_USER
+#                 recipient_list = [user.email]
+
+#                 text_content = f"""Dear {user.full_name},
+
+#                 I hope this email finds you well.
+
+#                 I am pleased to inform you that you have been added as a consultant on our Lawyer Consultancy website. Your expertise and insights will be invaluable to our clients, and we are delighted to have you on board.
+
+#                 Below are your account credentials:
+#                 Email: {user.email}
+#                 Password: {password}
+
+#                 You can log in to your account using the provided credentials. Upon login, we encourage you to change your password to something more memorable. Your security is important to us.
+
+#                 Once logged in, you will have access to various features and functionalities, including scheduling sessions with clients. Feel free to take sessions at your convenience, and provide your expertise to those seeking legal assistance.
+
+#                 Should you have any questions or require assistance, please don't hesitate to reach out to us. We are here to support you every step of the way.
+
+#                 Thank you for joining our platform, and we look forward to a fruitful collaboration.
+
+#                 Best regards,
+#                 Lawyer Consultancy
+#                 """
+
+#                 send_mail(subject, text_content, from_email, recipient_list)
+
+#                 return Response({
+#                     'user': user_serializer.data,
+#                     'profile': profile_serializer.data
+#                 }, status=status.HTTP_201_CREATED)
+
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class AddLawyerView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = LawyerSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-class DepartmentViewSet(viewsets.ModelViewSet):
-    queryset = Department.objects.all()
-    serializer_class = DepartmentForm
+    """
+    API view to handle the addition of a lawyer.
+
+    This view handles the creation of a CustomUser with the role of 'lawyer'
+    and their associated LawyerProfile, including departments, languages,
+    and other related data.
+    """
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        try:
+            with transaction.atomic():
+                # Generate a password
+                pwo = PasswordGenerator()
+                pwo.excludeschars = "[]{}()<>+-_="
+                pwo.minnumbers = 1
+                pwo.minschars = 1
+                pwo.minuchars = 1
+                pwo.minlchars = 1
+                pwo.minlen = 8
+                pwo.maxlen = 16
+                password = pwo.generate()
+
+                # Extract user data
+                user_data = {
+                    'full_name': request.data.get('full_name'),
+                    'email': request.data.get('email'),
+                    'username': request.data.get('email'),
+                    'phone_number': request.data.get('phone_number'),
+                    'role': 'lawyer',
+                    'profile_image': request.FILES.get('profile_image'),
+                }
+
+                # Validate user data with the serializer
+                user_serializer = LawyerRegistrationSerializer(data=user_data)
+                user_serializer.is_valid(raise_exception=True)
+
+                # Create a new user instance but don't save to the database yet
+                user = user_serializer.save()
+                user.set_password(password)  # Hash the password
+                user.save()  # Save the user instance
+
+                # Extract profile data
+                profile_data = {
+                    'user': user.id,
+                    'experience': request.data.get('experience'),
+                    'description': request.data.get('description'),
+                    'address': request.data.get('address'),
+                    'city': request.data.get('city'),
+                    'state': request.data.get('state'),
+                    'postal_code': request.data.get('postal_code'),
+                }
+
+                # Create the lawyer profile
+                profile_serializer = LawyerProfileSerializer(data=profile_data)
+                profile_serializer.is_valid(raise_exception=True)
+                lawyer_profile = profile_serializer.save()
+
+                # Handle departments (ManyToManyField)
+                department_ids = request.data.get('department', [])
+                if department_ids:
+                    if isinstance(department_ids, str):
+                        department_ids = department_ids.strip('[]').split(',')
+                        department_ids = [
+                            int(dept_id) for dept_id in department_ids if dept_id.strip().isdigit()]
+                    departments = Department.objects.filter(
+                        id__in=list(department_ids))
+                    lawyer_profile.departments.set(departments)
+
+                # Handle languages (ManyToManyField)
+                language_ids = request.data.get('language', [])
+                if language_ids:
+                    if isinstance(language_ids, str):
+                        language_ids = language_ids.strip('[]').split(',')
+                        language_ids = [
+                            int(lang_id) for lang_id in language_ids if lang_id.strip().isdigit()]
+                    languages = Language.objects.filter(id__in=language_ids)
+                    lawyer_profile.languages.set(languages)
+
+                # Send the welcome email
+                subject = 'Welcome to Lawyer Consultancy - Your Consultancy Account Details'
+                from_email = settings.EMAIL_HOST_USER
+                recipient_list = [user.email]
+
+                text_content = f"""Dear {user.full_name},
+
+                I hope this email finds you well.
+
+                I am pleased to inform you that you have been added as a consultant on our Lawyer Consultancy website. Your expertise and insights will be invaluable to our clients, and we are delighted to have you on board.
+
+                Below are your account credentials:
+                Email: {user.email}
+                Password: {password}
+
+                You can log in to your account using the provided credentials. Upon login, we encourage you to change your password to something more memorable. Your security is important to us.
+
+                Once logged in, you will have access to various features and functionalities, including scheduling sessions with clients. Feel free to take sessions at your convenience, and provide your expertise to those seeking legal assistance.
+
+                Should you have any questions or require assistance, please don't hesitate to reach out to us. We are here to support you every step of the way.
+
+                Thank you for joining our platform, and we look forward to a fruitful collaboration.
+
+                Best regards,
+                Lawyer Consultancy
+                """
+
+                send_mail(subject, text_content, from_email, recipient_list)
+
+                return Response({
+                    'user': user_serializer.data,
+                    'profile': profile_serializer.data
+                }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
