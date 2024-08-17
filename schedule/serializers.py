@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Scheduling
+from .models import Scheduling,LawyerProfile,BookedAppointment
+from api.models import CustomUser
 from datetime import datetime, timedelta
 
 class SchedulingSerializer(serializers.ModelSerializer):
@@ -35,3 +36,37 @@ class ScheduledSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scheduling
         fields = '__all__'
+
+
+class SheduledSerilizerForUserSide(serializers.ModelSerializer):
+    class Meta:
+        model = Scheduling
+        fields = ['id','start_time', 'end_time', 'price']  
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['full_name', 'profile_image']
+
+
+class LawyerProfileSerializer(serializers.ModelSerializer):
+    user = CustomUserSerializer()
+
+    class Meta:
+        model = LawyerProfile
+        fields = ['user']
+        
+class SchedulingSerializerForScheduledSession(serializers.ModelSerializer):
+    lawyer_profile = LawyerProfileSerializer()
+
+    class Meta:
+        model = Scheduling
+        fields = ['start_time', 'end_time', 'lawyer_profile']
+
+class BookedAppointmentSerializer(serializers.ModelSerializer):
+    scheduling = SchedulingSerializerForScheduledSession()
+    session_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+
+    class Meta:
+        model = BookedAppointment
+        fields = ['uuid', 'session_date', 'scheduling', 'booked_at']

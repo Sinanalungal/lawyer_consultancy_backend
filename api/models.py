@@ -100,7 +100,7 @@ class LawyerProfile(models.Model):
     
 
     def __str__(self) -> str:
-        return f"Profile for {self.user.full_name}"
+        return f"Profile for {self.user.email}"
 
 
 class PasswordResetToken(models.Model):
