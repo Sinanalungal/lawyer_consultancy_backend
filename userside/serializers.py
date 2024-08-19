@@ -13,6 +13,7 @@ class LanguageSerializer(serializers.ModelSerializer):
 
     
 class LawyerProfileSerializer(serializers.ModelSerializer):
+    user_pk = serializers.CharField(source='user.pk')
     user_full_name = serializers.CharField(source='user.full_name')
     user_profile_image = serializers.ImageField(source='user.profile_image')
     # user_email = serializers.EmailField(source='user.email')
@@ -24,6 +25,7 @@ class LawyerProfileSerializer(serializers.ModelSerializer):
         model = LawyerProfile
         fields = [
             'pk',
+            'user_pk',
             'user_full_name',
             'user_profile_image',
             # 'user_email',

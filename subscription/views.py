@@ -297,13 +297,13 @@ class WebhookView(View):
             if (thread_qs.exists()):
                 print('entered in to the inside')
                 thread_obj=thread_qs.first()
-                print(thread_obj.is_listed)
+                print(thread_obj.is_listed) 
                 thread_obj.is_listed = True
                 print(thread_obj,'this is the updated threaad obj')
                 thread_obj.save()
             else:
                 thread_obj=Thread.objects.create(first_person=user,second_person=subscribed_lawyer)
-            # print(thread_obj,'this is thread')
+            # print(thread_obj,'this is thread')    
             print("Subscription created:", subscription)
             send_mail(
                 'Your Transaction Is Successfull',

@@ -321,8 +321,10 @@ class StripeWebhookView(View):
 #             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 #         print(checkout_session.id)
 #         return Response(checkout_session.id, status=status.HTTP_200_OK)
-    
 
+
+from django.utils import timezone
+from django.db.models import Q
 
 class BookedAppointmentsListView(generics.ListAPIView):
     serializer_class = BookedAppointmentSerializer
@@ -330,25 +332,100 @@ class BookedAppointmentsListView(generics.ListAPIView):
 
     def get_queryset(self):
         query_param = self.request.query_params.get('type')
+        now = timezone.now()
+        user = self.request.user
+        print(query_param)
+        if user.role == 'lawyer':
+            # If the user is a lawyer, filter by their lawyer profile
+            lawyer_profile = user.lawyer_profile
+            if query_param == 'upcoming':
+                print('getting in to the lawyer upcoming')
+                return BookedAppointment.objects.filter(
+                    scheduling__lawyer_profile=lawyer_profile,
+                    is_transaction_completed=True,
+                    is_completed=False,
+                    is_canceled=False,
+                ).filter(
+                    Q(session_date__date__gt=now.date()) | 
+                    (Q(session_date__date=now.date()) & Q(scheduling__end_time__gte=now.time()))
+                ).select_related('scheduling__lawyer_profile')
+            elif query_param == 'completed':
+                print('getting in to the lawyer finished')
+                return BookedAppointment.objects.filter(
+                    scheduling__lawyer_profile=lawyer_profile,
+                    is_transaction_completed=True,
+                    is_canceled=False,
+                ).filter(
+                    Q(session_date__date__lt=now.date()) | 
+                    (Q(session_date__date=now.date()) & Q(scheduling__end_time__lt=now.time()))
+                ).select_related('scheduling__lawyer_profile')
         
-        if query_param == 'upcoming':
-            return BookedAppointment.objects.filter(
-                user_profile=self.request.user,
-                is_transaction_completed=True,
-                is_completed=False,
-                is_canceled=False
-            ).select_related('scheduling__lawyer_profile')
-        elif query_param == 'finished':
-            return BookedAppointment.objects.filter(
-                user_profile=self.request.user,
-                is_transaction_completed=True,
-                is_completed=True,
-                is_canceled=False
-            ).select_related('scheduling__lawyer_profile')
-        else:
-            return BookedAppointment.objects.none() 
+        elif user.role == 'user':
+            # If the user is a regular user, filter by their user profile
+            if query_param == 'upcoming':
+                print('getting in to the user upcoming')
+                return BookedAppointment.objects.filter(
+                    user_profile=user,
+                    is_transaction_completed=True,
+                    is_completed=False,
+                    is_canceled=False,
+                ).filter(
+                    Q(session_date__date__gt=now.date()) | 
+                    (Q(session_date__date=now.date()) & Q(scheduling__end_time__gte=now.time()))
+                ).select_related('scheduling__lawyer_profile')
+            elif query_param == 'finished':
+                print('getting in to the user finished')
+                return BookedAppointment.objects.filter(
+                    user_profile=user,
+                    is_transaction_completed=True,
+                    is_canceled=False,
+                ).filter(
+                    Q(session_date__date__lt=now.date()) | 
+                    (Q(session_date__date=now.date()) & Q(scheduling__end_time__lt=now.time()))
+                ).select_related('scheduling__lawyer_profile')
+
+        return BookedAppointment.objects.none()
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
+        print(serializer.data)
         return Response(serializer.data)
+
+
+# class BookedAppointmentsListView(generics.ListAPIView):
+#     serializer_class = BookedAppointmentSerializer
+#     permission_classes = [IsAuthenticated]
+
+#     def get_queryset(self):
+#         query_param = self.request.query_params.get('type')
+#         now = timezone.now()
+
+#         if query_param == 'upcoming':
+#             return BookedAppointment.objects.filter(
+#                 user_profile=self.request.user,
+#                 is_transaction_completed=True,
+#                 is_completed=False,
+#                 is_canceled=False,
+#             ).filter(
+#                 Q(session_date__date__gt=now.date()) |  # Future dates
+#                 (Q(session_date__date=now.date()) & Q(scheduling__end_time__gte=now.time()))  # Today but future time
+#             ).select_related('scheduling__lawyer_profile')
+
+#         elif query_param == 'finished':
+#             return BookedAppointment.objects.filter(
+#                 user_profile=self.request.user,
+#                 is_transaction_completed=True,
+#                 is_canceled=False,
+#             ).filter(
+#                 Q(session_date__date__lt=now.date()) | 
+#                 (Q(session_date__date=now.date()) & Q(scheduling__end_time__lt=now.time()))  # Today but past end time
+#             ).select_related('scheduling__lawyer_profile')
+
+#         else:
+#             return BookedAppointment.objects.none()
+
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.get_queryset()
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)

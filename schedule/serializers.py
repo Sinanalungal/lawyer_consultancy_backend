@@ -66,7 +66,7 @@ class SchedulingSerializerForScheduledSession(serializers.ModelSerializer):
 class BookedAppointmentSerializer(serializers.ModelSerializer):
     scheduling = SchedulingSerializerForScheduledSession()
     session_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
-
+    user_profile =CustomUserSerializer()
     class Meta:
         model = BookedAppointment
-        fields = ['uuid', 'session_date', 'scheduling', 'booked_at']
+        fields = ['uuid', 'session_date', 'scheduling', 'booked_at','user_profile']
