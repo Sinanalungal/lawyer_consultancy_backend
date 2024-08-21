@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Thread, ChatMessage
 from api.serializers import UserDetailSerializer
 from api.models import CustomUser
+from decouple import config
 
 # class ChatMessageSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -59,6 +60,28 @@ class ThreadSerializer(serializers.ModelSerializer):
         if last_message:
             return ChatMessageSerializer(last_message).data
         return None
+    
+class ThreadForSiganlsSerializer(serializers.ModelSerializer):
+    other_user = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Thread
+        fields = ['id', 'timestamp', 'other_user', 'last_message']
+
+    def get_other_user(self, obj):
+        request_user = self.context.get('request_user')
+        if obj.first_person == request_user:
+            return UserDetailSerializer(obj.second_person).data
+        return UserDetailSerializer(obj.first_person).data
+
+    def get_last_message(self, obj):
+        # Fetch the last message in the thread
+        last_message = ChatMessage.objects.filter(thread=obj).order_by('-timestamp').first()
+        if last_message:
+            return ChatMessageSerializer(last_message).data
+        return None
+
 
 class ChatUserDataSerializer(serializers.ModelSerializer):
     class Meta:
@@ -68,6 +91,13 @@ class ChatUserDataSerializer(serializers.ModelSerializer):
 
 class ChatMessageSerializer(serializers.ModelSerializer):
     send_by = serializers.PrimaryKeyRelatedField(read_only=True, source='user')
+    audio = serializers.SerializerMethodField()
     class Meta:
         model = ChatMessage
-        fields = ['id', 'message', 'timestamp','thread', 'send_by']
+        fields = ['id', 'message', 'timestamp','thread', 'send_by' ,'content_type','audio']
+        # fields = ['id', 'message', 'timestamp','thread', 'send_by']
+    def get_audio(self, obj):
+        # Ensure you have a valid domain setting in your Django settings
+        if obj.audio:
+            return f"{config('BACKEND_URL')}{obj.audio.url}"
+        return None
