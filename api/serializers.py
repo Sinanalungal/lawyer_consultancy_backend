@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
-from .models import CustomUser,Department,LawyerProfile,Language
+from .models import CustomUser,Department,LawyerProfile,Language,States
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -167,3 +167,8 @@ class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language
         fields = ['id', 'name']
+
+class StatesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = States
+        fields = ['name']

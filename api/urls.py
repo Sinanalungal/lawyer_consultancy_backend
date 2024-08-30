@@ -1,6 +1,6 @@
 # urls.py
 from django.urls import path
-from .views import UserRegistrationAPIView, PasswordChangeView, DepartmentLanguageView, UserProfileImageUpdateView, UserListAPIView, UpdateLawyerVerificationAPIView, LawyerListAPIView, UpdateUserVerificationAPIView, LawyerFilter, DepartmentView, LawyerDetails, PasswordUpdate, ResetLinkValidationCheck, OtpVerificationView, ResendOtp, UserDetailView, UserUpdateView, ResetPasswordView, OtpSendGoogleAuthView, LoginWithGoogleView, ForgetPasswordView, SaveDataRequestView
+from .views import UserRegistrationAPIView, PasswordChangeView, DepartmentLanguageStateView, UserProfileImageUpdateView, UserListAPIView, UpdateLawyerVerificationAPIView, LawyerListAPIView, UpdateUserVerificationAPIView, LawyerFilter, DepartmentView, LawyerDetails, PasswordUpdate, ResetLinkValidationCheck, OtpVerificationView, ResendOtp, UserDetailView, UserUpdateView, ResetPasswordView, OtpSendGoogleAuthView, LoginWithGoogleView, ForgetPasswordView, SaveDataRequestView
 
 urlpatterns = [
     path('register/', UserRegistrationAPIView.as_view()),
@@ -28,6 +28,6 @@ urlpatterns = [
     path('filter-lawyer/', LawyerListAPIView.as_view(), name='filter-lawyer'),
     path('lawyer/update_verification/', UpdateLawyerVerificationAPIView.as_view(),
          name='update-lawyer-verification'),
-    path('departments-languages/', DepartmentLanguageView.as_view(),
+    path('departments-languages/', DepartmentLanguageStateView.as_view(),
          name='departments-languages'),
 ]

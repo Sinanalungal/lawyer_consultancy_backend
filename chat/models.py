@@ -56,14 +56,3 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"Message from {self.user} in thread {self.thread} at {self.timestamp}"
 
-    # def is_text_message(self):
-    #     return self.content_type == 'text' and self.message
-
-    # def is_audio_message(self):
-    #     return self.content_type == 'audio' and self.audio
-
-    # def is_video_message(self):
-    #     return self.content_type == 'video' and self.video
-
-    # def is_image_message(self):
-    #     return self.content_type == 'image' and self.image

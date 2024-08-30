@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from api.models import CustomUser,LawyerProfile
+from api.models import CustomUser,LawyerProfile,States
 
 
 
@@ -19,3 +19,7 @@ class LawyerProfileSerializer(serializers.ModelSerializer):
         model = LawyerProfile
         fields = ['id', 'user', 'experience', 'description', 'departments', 'languages', 'address', 'city', 'state', 'postal_code']
         read_only_fields = ['departments', 'languages']
+
+
+
+

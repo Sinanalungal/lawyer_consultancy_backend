@@ -26,9 +26,9 @@ from django_redis import get_redis_connection
 from twilio.rest import Client
 
 # Local application imports
-from .models import CustomUser, PasswordResetToken, Department,Language
+from .models import CustomUser, PasswordResetToken, Department,Language,States
 from server.permissions import IsAdmin, IsLawyer, IsAdminOrLawyer
-from .serializers import UserRegistrationSerializer, LawyerFilterSerializer,LanguageSerializer,PasswordChangeSerializer, DepartmentSerializer, LawyerSerializer,UserUpdateSerializer, UserDetailSerializer,UserDetailForAdminSerializer
+from .serializers import UserRegistrationSerializer, LawyerFilterSerializer,StatesSerializer,LanguageSerializer,PasswordChangeSerializer, DepartmentSerializer, LawyerSerializer,UserUpdateSerializer, UserDetailSerializer,UserDetailForAdminSerializer
 from .sms_utils import generate_otp
 from .utils import  get_id_token_with_code_method_2
 from server.constants import url
@@ -1305,18 +1305,21 @@ class PasswordChangeView(APIView):
     
   
 
-class DepartmentLanguageView(APIView):
+class DepartmentLanguageStateView(APIView):
     """
-    View to fetch both departments and languages.
+    View to fetch departments, languages, and states.
     """
     def get(self, request, *args, **kwargs):
         departments = Department.objects.all()
         languages = Language.objects.all()
+        states = States.objects.all()  # Fetch states
         
         department_serializer = DepartmentSerializer(departments, many=True)
         language_serializer = LanguageSerializer(languages, many=True)
+        states_serializer = StatesSerializer(states, many=True)  # Serialize states
         
         return Response({
             'departments': department_serializer.data,
-            'languages': language_serializer.data
+            'languages': language_serializer.data,
+            'states': states_serializer.data  # Include states in response
         })

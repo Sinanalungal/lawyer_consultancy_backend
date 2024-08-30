@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import CaseModels,UserCases
+from .models import Case
 # Register your models here.
 
-admin.site.register(CaseModels)
-admin.site.register(UserCases)
+admin.site.register(Case)

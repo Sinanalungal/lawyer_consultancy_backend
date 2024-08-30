@@ -10,6 +10,9 @@ import json
 def chat_message_handler(sender, instance, **kwargs):
     print('Entering signal handler')
     channel_layer = get_channel_layer()
+    print(channel_layer,'this is the channel layer')
+
+    print(instance)
     
     # Determine the chat room to send the message to
     chat_room = f'user_chatroom_{instance.second_person.id}'  # Adjust this as needed

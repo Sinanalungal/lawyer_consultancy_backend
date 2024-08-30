@@ -1,32 +1,27 @@
 from rest_framework import serializers
-from .models import CaseModels, UserCases
-from api.models import CustomUser, Department
+from .models import Case  # Make sure you import your Case model
+from api.models import States
 
-class LawyerDepartmentSerializer(serializers.ModelSerializer):
+# class CaseSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Case
+#         fields = ['id', 'case_type', 'description', 'budget', 'status', 'reference_until', 'state']
+#         read_only_fields = ['id', 'status']
+
+
+class StateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Department
-        fields = '__all__'
+        model = States
+        fields = ['id', 'name']
 
-class CustomUserSerializer(serializers.ModelSerializer):
-    departments = LawyerDepartmentSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = CustomUser
-        fields = ['id', 'username', 'email', 'full_name', 'profile', 'departments', 'experience']
-
-class CaseModelsSerializer(serializers.ModelSerializer):
-    lawyer = CustomUserSerializer(read_only=True)
-    department = LawyerDepartmentSerializer(read_only=True)
-
-    class Meta:
-        model = CaseModels
-        fields = '__all__'
-
-class UserCasesSerializer(serializers.ModelSerializer):
-    user = CustomUserSerializer(read_only=True)
-    case_model = serializers.PrimaryKeyRelatedField(queryset=CaseModels.objects.all())
-    # case_model = CaseModelsSerializer(read_only=True)
+class CaseSerializer(serializers.ModelSerializer):
+    state_name = serializers.SerializerMethodField()  # Read-only field for state name
+    state = serializers.PrimaryKeyRelatedField(queryset=States.objects.all())  # For writing state as ID
 
     class Meta:
-        model = UserCases
-        fields = '__all__'
+        model = Case
+        fields = ['id', 'case_type', 'description', 'budget', 'status', 'reference_until', 'state', 'state_name']
+        read_only_fields = ['id', 'status', 'state_name']
+
+    def get_state_name(self, obj):
+        return obj.state.name  # This returns the name of the state

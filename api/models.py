@@ -72,6 +72,12 @@ class Language(models.Model):
 #     def __str__(self) -> str:
 #         return f"Profile for {self.user.full_name}"
 
+class States(models.Model):
+    """
+    Model to store states.
+    """
+    name = models.CharField(max_length=100, blank=True, null=True)
+
 class LawyerProfile(models.Model):
     """
     Model to store lawyer-specific fields.
@@ -95,12 +101,14 @@ class LawyerProfile(models.Model):
     
     address = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
+    # state = models.ForeignKey(States,on_delete=models.CASCADE)
     state = models.CharField(max_length=100, blank=True, null=True)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     
 
     def __str__(self) -> str:
         return f"Profile for {self.user.email}"
+
 
 
 class PasswordResetToken(models.Model):

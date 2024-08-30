@@ -19,19 +19,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         print('connected')
-        # user_id = self.scope['url_route']['kwargs']['id']
-        user = self.scope['user']
-    
-        if user.is_anonymous:
-            # If the user is not authenticated, you can handle it here (e.g., close the connection)
-            await self.close()
-            return
+        user_id = self.scope['url_route']['kwargs']['id']
         
-        # Get the user ID from the user object
-        user_id = user.id
+        # user = self.scope['user']
+    
+        # if user.is_anonymous:
+        #     # If the user is not authenticated, you can handle it here (e.g., close the connection)
+        #     await self.close()
+        #     return
+        
+        # # Get the user ID from the user object
+        # user_id = user.id
+        print(user_id,'this is the user ID')
         # print('Connected to room:', user_id)
         chat_room = f'user_chatroom_{user_id}'
-        print(chat_room)
+        print(chat_room,'in connection')
         self.chat_room = chat_room
         await self.channel_layer.group_add(
             chat_room,
@@ -154,13 +156,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print('chat message')
         print(event,'this is the event')
         # await self.send(text_data=event['text'])
-        await self.send(text_data=event['text'])
+        response = {
+            'type': event.get('type'),
+            'data': event['text']
+        }
+        
+        # Send the response with the type
+        await self.send(text_data=json.dumps(response))
 
     async def add_thread(self, event):
         print('Add Thread')
         print(event,'this is the event')
+        print(event['text'])
         # await self.send(text_data=event['text'])
-        await self.send(text_data=event['text'])
+        response = {
+            'type': event.get('type'),
+            'data': event['text']
+        }
+        
+        # Send the response with the type
+        await self.send(text_data=json.dumps(response))
 
 
     @database_sync_to_async
