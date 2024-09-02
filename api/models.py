@@ -52,25 +52,6 @@ class Language(models.Model):
         return self.name
     
 
-# class LawyerProfile(models.Model):
-#     """
-#     Model to store lawyer-specific fields.
-
-#     Fields:
-#     - user: OneToOneField to CustomUser
-#     - departments: ManyToManyField to Department
-#     - experience: PositiveIntegerField for years of experience
-#     - description: TextField for a brief description
-#     - languages: ManyToManyField to Language
-#     """
-#     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='lawyer_profile')
-#     departments = models.ManyToManyField(Department, blank=True)
-#     experience = models.PositiveIntegerField(default=0, blank=True, null=True)
-#     description = models.TextField(blank=True, null=True)
-#     languages = models.ManyToManyField(Language, blank=True)
-
-#     def __str__(self) -> str:
-#         return f"Profile for {self.user.full_name}"
 
 class States(models.Model):
     """

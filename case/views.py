@@ -1,12 +1,17 @@
-from rest_framework import generics 
+from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Case
-from .serializers import CaseSerializer,StateSerializer
-from api.models import States
+from .models import Case, SelectedCases,AllotedCases
+from .serializers import CaseSerializer, StateSerializer,AllotedCasesSerializer, SelectedCasesSerializer
+from api.models import States, LawyerProfile
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import CaseFilter
+from rest_framework.permissions import IsAuthenticated
+from server.permissions import IsLawyer
+from django.utils import timezone
+from django.db.models import Q
+from django.db import transaction
 
 class CaseListCreateView(generics.ListCreateAPIView):
     serializer_class = CaseSerializer
@@ -17,11 +22,11 @@ class CaseListCreateView(generics.ListCreateAPIView):
         """
         user = self.request.user
         if user.is_authenticated:
-            return Case.objects.filter(user=user).filter(is_listed=True)
-        return Case.objects.none() 
+            return Case.objects.filter(user=user).filter(Q(is_listed=True)&Q(status='Pending'))
+        return Case.objects.none()
 
     def post(self, request, *args, **kwargs):
-        print(request.data) 
+        print(request.data)
         return self.create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -31,16 +36,14 @@ class CaseListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
-
-
 class NoPagination(PageNumberPagination):
-    page_size = None  # This disables pagination
+    page_size = None 
+
 
 class StateListView(generics.ListAPIView):
     serializer_class = StateSerializer
     queryset = States.objects.all()
-    pagination_class = NoPagination  # Use the NoPagination class to disable pagination
-
+    pagination_class = NoPagination
 
 
 class CaseDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -48,21 +51,29 @@ class CaseDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CaseSerializer
 
 
-
 class CaseListView(generics.ListAPIView):
-    queryset = Case.objects.all()
     serializer_class = CaseSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = CaseFilter
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        lawyer = self.request.user
+        obj = LawyerProfile.objects.filter(user=lawyer).first()
+        queryset = Case.objects.filter(Q(is_listed=True)&Q(status='Pending'))
+
+        selected_case_ids = SelectedCases.objects.filter(
+            lawyer=obj).values_list('case_model_id', flat=True)
+        queryset = queryset.exclude(id__in=selected_case_ids)
+
+        today = timezone.now().date()
+        print(today)
+        queryset = queryset.filter(reference_until__gte=today)
+
         search_term = self.request.query_params.get('search', None)
         if search_term:
             queryset = queryset.filter(case_type__icontains=search_term)
+
         return queryset
-
-
 
 class UnlistCaseView(generics.UpdateAPIView):
     queryset = Case.objects.filter(is_listed=True).all()
@@ -73,3 +84,126 @@ class UnlistCaseView(generics.UpdateAPIView):
         case.is_listed = False
         case.save()
         return Response({"detail": "Case has been unlisted successfully."}, status=status.HTTP_200_OK)
+
+
+class SelectedCasesView(generics.GenericAPIView):
+    queryset = SelectedCases.objects.all()
+    serializer_class = SelectedCasesSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        case_id=request.query_params.get("case_id")
+        print(case_id)
+        if case_id:
+            selected_cases = self.queryset.filter(case_model_id=case_id)
+            serializer = self.get_serializer(selected_cases, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({"detail": "Case ID not provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        lawyer = LawyerProfile.objects.filter(user=request.user).first()
+        if not lawyer:
+            return Response({"detail": "Lawyer profile not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        case_model_id = serializer.validated_data['case_model'].id
+
+        if SelectedCases.objects.filter(lawyer=lawyer, case_model_id=case_model_id).exists():
+            return Response({"detail": "This case has already been selected by the lawyer"}, status=status.HTTP_400_BAD_REQUEST)
+
+        self.perform_create(serializer, lawyer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_create(self, serializer, lawyer):
+        serializer.save(lawyer=lawyer)
+
+
+class CreateAllotedCaseView(generics.CreateAPIView):
+    serializer_class = AllotedCasesSerializer
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        selected_case_id = request.data.get('selected_case_id')
+
+        try:
+            selected_case = SelectedCases.objects.get(id=selected_case_id)
+            case_model = Case.objects.get(id=selected_case.case_model.pk)
+        except SelectedCases.DoesNotExist:
+            return Response({'error': 'Selected case not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if selected_case.case_model.user != request.user:
+            return Response({'error': 'You are not authorized to assign this case'}, status=status.HTTP_403_FORBIDDEN)
+
+        alloted_case = AllotedCases.objects.create(
+            selected_case=selected_case,
+            status=request.data.get('status', 'Ongoing')
+        )
+        # case_model.is_listed = False
+        case_model.status = 'Accepted'
+        case_model.save()
+
+        serializer = self.get_serializer(alloted_case)
+        return Response(serializer.data, status=status.HTTP_201_CREATED) 
+
+
+# class UserAllotedCasesView(generics.ListAPIView):
+#     serializer_class = AllotedCasesSerializer
+#     permission_classes = [IsAuthenticated]
+#     # pagination_class = NoPagination
+
+#     def get_queryset(self):
+#         query_set = AllotedCases.objects.filter(Q(selected_case__lawyer__user=self.request.user)|Q(selected_case__case_model__user=self.request.user))
+#         search_term = self.request.query_params.get('search', None)
+#         print(search_term)
+
+#         if search_term:
+#             query_set = query_set.filter(
+#                 Q(selected_case__case_model__case_type__icontains=search_term)
+#                 #   |
+#                 # Q(selected_case__lawyer__user__full_name__icontains=search_term)
+#             )
+#         print(query_set)
+ 
+
+#         return query_set
+
+class UserAllotedCasesView(generics.ListAPIView):
+    serializer_class = AllotedCasesSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Fetching only the cases related to the authenticated user
+        query_set = AllotedCases.objects.filter(
+            Q(selected_case__lawyer__user=self.request.user) | 
+            Q(selected_case__case_model__user=self.request.user)
+        )
+
+        # Getting search and status parameters from query params
+        search_term = self.request.query_params.get('search', None)
+        status = self.request.query_params.get('status', None)
+
+        if search_term:
+            query_set = query_set.filter(
+                Q(selected_case__case_model__case_type__icontains=search_term)
+                # | Q(selected_case__lawyer__user__full_name__icontains=search_term)
+            )
+        
+        # Filter by status if provided
+        if status:
+            query_set = query_set.filter(status=status)
+        
+        return query_set
+
+    
+
+class CaseFinished(generics.UpdateAPIView):
+    queryset = AllotedCases.objects.filter(status='Ongoing').all()
+    # serializer_class = CaseSerializer
+
+    def patch(self, request, *args, **kwargs):
+        case = self.get_object()
+        case.status = 'Completed'
+        case.save()
+        return Response({"detail": "Case has marked as completed successfully."}, status=status.HTTP_200_OK)

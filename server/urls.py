@@ -40,6 +40,7 @@ urlpatterns = [
     path('case-manage/', include('case.urls')),
     path('schedule/', include('schedule.urls')),
     path('userside/', include('userside.urls')),
-    path("graphql/", GraphQLView.as_view(graphiql=True)),
+    path('wallet/', include('wallet.urls')),
+    # path("graphql/", GraphQLView.as_view(graphiql=True)),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

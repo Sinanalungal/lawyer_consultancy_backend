@@ -10,7 +10,6 @@ from api.models import LawyerProfile
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 from django.utils.dateparse import parse_date
-# from django.utils import timezone
 from datetime import datetime, timedelta
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -20,7 +19,7 @@ from django.views import View
 from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-
+from wallet.models import WalletTransactions
 
 class SchedulingCreateView(generics.CreateAPIView):
     queryset = Scheduling.objects.all()
@@ -105,18 +104,16 @@ class AvailableSlotsView(generics.GenericAPIView):
         now = datetime.now() 
         today = datetime.today().date()  
 
-        # Convert current time to time object
         now_time = now.time()
 
-        # If the requested date is in the past, return an empty queryset
         if date < today:
             print('Date<today is working')
             return Response({"times": []})
-
+        
         try:
             if date == today:
                 scheduling_queryset = Scheduling.objects.filter(
-                    pk=lawyer_id,
+                    lawyer_profile__pk=lawyer_id,
                     date__lte=date,
                     is_listed=True,
                     is_canceled=False,
@@ -125,7 +122,7 @@ class AvailableSlotsView(generics.GenericAPIView):
                 ).order_by('start_time')
             else:
                 scheduling_queryset = Scheduling.objects.filter(
-                    pk=lawyer_id,
+                    lawyer_profile__pk=lawyer_id,
                     date__lte=date,
                     is_listed=True,
                     is_canceled=False,
@@ -210,6 +207,7 @@ class BookAppointmentView(APIView):
                         'scheduling_uuid': scheduling_uuid,
                         'scheduling_date': scheduling_date_str,
                         'user_id': request.user.id,
+                        'payment_for':'session',
                     }
                 )
                 return Response({'sessionId': checkout_session.id}, status=status.HTTP_201_CREATED)
@@ -243,8 +241,8 @@ class StripeWebhookView(View):
             print('Invalid signature')
             return JsonResponse({'error': 'Invalid signature'}, status=400)
 
-        if event['type'] == 'checkout.session.completed':
-            session = event['data']['object']
+        session = event['data']['object']
+        if event['type'] == 'checkout.session.completed' and session['metadata']['payment_for']=='session':
             scheduling_uuid = session['metadata']['scheduling_uuid']
             scheduling_date_str = session['metadata']['scheduling_date']
             user_id = session['metadata']['user_id']
@@ -257,9 +255,9 @@ class StripeWebhookView(View):
                     payment_details = PaymentDetails.objects.create(
                         payment_method=session['payment_method_types'][0],
                         transaction_id=session['payment_intent'],
+                        payment_for='session'
                     )
                     
-                    # Create the booked appointment
                     obj=BookedAppointment.objects.create(
                         scheduling=scheduling,
                         user_profile_id=user_id,
@@ -276,7 +274,44 @@ class StripeWebhookView(View):
             except Exception as e:
                 print('Error occurred:', str(e))
                 return JsonResponse({'error': str(e)}, status=500)
+        elif event['type'] == 'checkout.session.completed' and session['metadata']['payment_for']=='wallet':
+            print('getting to the wallet working part....')
+            user_id = session['metadata']['user_id']
+            try:
+                with transaction.atomic():
+                    payment_details = PaymentDetails.objects.create(
+                        payment_method=session['payment_method_types'][0],
+                        transaction_id=session['payment_intent'],
+                        payment_for='wallet'
+                    )
+                    # obj=BookedAppointment.objects.create(
+                    #     user_profile_id=user_id,
+                    #     payment_details=payment_details,
+                    #     is_transaction_completed=True,
+                    #     is_paid_via_wallet=True,
+                    # )
+                    try:
+                        latest_transaction = WalletTransactions.objects.latest('created_at')
+                        print(latest_transaction)
+                        latest_wallet_balance = latest_transaction.wallet_balance
+                    except:
+                        latest_wallet_balance=0
 
+                    print(latest_wallet_balance)
+                    print(session)
+                    price =float(session['amount_subtotal'])/100
+                    print(price)
+                    obj = WalletTransactions.objects.create(
+                        wallet_balance = float(latest_wallet_balance)+price,
+                        amount = price,
+                        transaction_type='credit',
+                        user_id=int(user_id),
+                        payment_details=payment_details
+                    )
+                    print(obj)
+            except Exception as e:
+                print('Error occurred:', str(e))
+                return JsonResponse({'error': str(e)}, status=500)
         return JsonResponse({'status': 'success'}, status=200)
 
 # class CheckoutSession(APIView):

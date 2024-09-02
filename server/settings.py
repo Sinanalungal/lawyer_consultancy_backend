@@ -51,7 +51,8 @@ INSTALLED_APPS = [
     'chat',
     'case',
     'schedule',
-    'userside'
+    'userside',
+    'wallet',
 ]
 
 MIDDLEWARE = [

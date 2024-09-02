@@ -52,6 +52,7 @@ class Scheduling(models.Model):
 class PaymentDetails(models.Model):
     payment_method = models.CharField(max_length=50) 
     transaction_id = models.CharField(max_length=100, null=False, blank=False)
+    payment_for = models.CharField(max_length=50,null=False,blank=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
