@@ -70,3 +70,10 @@ class BookedAppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookedAppointment
         fields = ['uuid', 'session_date', 'scheduling', 'booked_at','user_profile']
+
+
+class SchedulingSerializerForAdmin(serializers.ModelSerializer):
+    lawyer_profile = LawyerProfileSerializer()
+    class Meta:
+        model = Scheduling
+        fields = ['id', 'date', 'start_time', 'end_time', 'price', 'lawyer_profile','is_listed']

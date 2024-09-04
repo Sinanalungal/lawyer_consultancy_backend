@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from server.permissions import IsLawyer
 from django.core.exceptions import ValidationError
 from .models import Scheduling, BookedAppointment,PaymentDetails
-from .serializers import SchedulingSerializer,BookedAppointmentSerializer, ScheduledSerializer, SheduledSerilizerForUserSide
+from .serializers import SchedulingSerializer,BookedAppointmentSerializer, ScheduledSerializer, SheduledSerilizerForUserSide,SchedulingSerializerForAdmin
 from api.models import LawyerProfile
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
@@ -443,7 +443,46 @@ class BookedAppointmentsListView(generics.ListAPIView):
         serializer = self.get_serializer(queryset, many=True)
         print(serializer.data)
         return Response(serializer.data)
+    
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.filters import SearchFilter
 
+
+class SchedulingListViewForAdmin(generics.ListAPIView):
+    serializer_class = SchedulingSerializerForAdmin
+    pagination_class = PageNumberPagination
+    filter_backends = [SearchFilter]
+    search_fields = ['date', 'start_time', 'end_time', 'price', 'lawyer_profile__user__full_name']
+
+    def get_queryset(self):
+        queryset = Scheduling.objects.filter(is_canceled=False)
+        is_listed_param = self.request.query_params.get('is_listed', None)
+
+        if is_listed_param is not None:
+            queryset = queryset.filter(is_listed=is_listed_param == 'true')
+
+        return queryset
+    
+    
+class SchedulingUpdateViewAdmin(generics.UpdateAPIView):
+    queryset = Scheduling.objects.all()
+    serializer_class = SchedulingSerializerForAdmin
+
+    def patch(self, request, *args, **kwargs):
+        scheduling_id = kwargs.get('pk')
+        is_listed = request.data.get('is_listed', None)
+
+        if is_listed is not None:
+            try:
+                scheduling = self.get_object()
+                scheduling.is_listed = is_listed
+                scheduling.save()
+                serializer = self.get_serializer(scheduling)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Scheduling.DoesNotExist:
+                return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"detail": "Bad request."}, status=status.HTTP_400_BAD_REQUEST)
 
 # class BookedAppointmentsListView(generics.ListAPIView):
 #     serializer_class = BookedAppointmentSerializer

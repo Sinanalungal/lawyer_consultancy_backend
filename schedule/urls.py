@@ -10,4 +10,6 @@ urlpatterns = [
     path('book-appointment/', views.BookAppointmentView.as_view(), name='book_appointment'),
     path('webhook/', views.StripeWebhookView.as_view(), name='stripe-webhook'),
     path('appointments/', views.BookedAppointmentsListView.as_view(), name='booked-appointments-list'),
+    path('all-scheduling/', views.SchedulingListViewForAdmin.as_view(), name='scheduling-list'),
+    path('schedule/update/<int:pk>/', views.SchedulingUpdateViewAdmin.as_view(), name='scheduling-update'),
 ]
