@@ -69,3 +69,9 @@ class AllotedCasesSerializer(serializers.ModelSerializer):
         model = AllotedCases
         fields = ['id', 'selected_case', 'status', 'created_at']
         read_only_fields = ['id','created_at','status']
+
+class AllotedCasesSerializerForAdmin(serializers.ModelSerializer):
+    class Meta:
+        model = AllotedCases
+        fields = '__all__'
+        depth = 1  # This will allow nested relationships to be serialized

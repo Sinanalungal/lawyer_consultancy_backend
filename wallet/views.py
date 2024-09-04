@@ -127,7 +127,11 @@ class AddFundsView(APIView):
 class GetBalanceView(APIView):
 
     def get(self, request, *args, **kwargs):
-        total_balance = WalletTransactions.objects.latest('created_at').wallet_balance
+        try:
+            latest_transaction = WalletTransactions.objects.filter(user=request.user).latest('created_at')
+            total_balance = latest_transaction.wallet_balance
+        except WalletTransactions.DoesNotExist:
+            total_balance = 0
         balance_history = WalletTransactions.objects.filter(user=request.user).all()
         balance_data = WalletTransactionsSerializer(balance_history, many=True).data
         return Response({"balance": total_balance, 'balance_history': balance_data}, status=status.HTTP_200_OK)

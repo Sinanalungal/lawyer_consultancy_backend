@@ -20,6 +20,7 @@ from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from wallet.models import WalletTransactions
+from wallet.models import WalletTransactions
 
 class SchedulingCreateView(generics.CreateAPIView):
     queryset = Scheduling.objects.all()
@@ -251,7 +252,7 @@ class StripeWebhookView(View):
                 with transaction.atomic():
                     scheduling = Scheduling.objects.get(pk=scheduling_uuid)
                     scheduling_date = datetime.strptime(scheduling_date_str, '%Y-%m-%d').date()
-
+                    lawyer_obj = scheduling.lawyer_profile.user
                     payment_details = PaymentDetails.objects.create(
                         payment_method=session['payment_method_types'][0],
                         transaction_id=session['payment_intent'],
@@ -265,6 +266,21 @@ class StripeWebhookView(View):
                         payment_details=payment_details,
                         is_transaction_completed=True,
                     )
+                    
+                    #-------Newly Added Part--------------------
+                    try:
+                        latest_transaction = WalletTransactions.objects.filter(user=lawyer_obj).latest('created_at')
+                        print(latest_transaction)
+                        latest_wallet_balance = latest_transaction.wallet_balance
+                    except:
+                        latest_wallet_balance=0
+                    
+                    price_for_lawyer = (float(scheduling.price)*0.9)
+                    latest_wallet_balance = float(latest_wallet_balance)+price_for_lawyer
+                    WalletTransactions.objects.create(user=lawyer_obj,payment_details=payment_details,wallet_balance=latest_wallet_balance,amount = price_for_lawyer,transaction_type= 'credit')
+                    #---------------------------------------------
+                    
+
                     scheduling.is_listed = False
                     scheduling.save()
 
@@ -291,7 +307,7 @@ class StripeWebhookView(View):
                     #     is_paid_via_wallet=True,
                     # )
                     try:
-                        latest_transaction = WalletTransactions.objects.latest('created_at')
+                        latest_transaction = WalletTransactions.objects.filter(user=lawyer_obj).latest('created_at')
                         print(latest_transaction)
                         latest_wallet_balance = latest_transaction.wallet_balance
                     except:
@@ -309,6 +325,7 @@ class StripeWebhookView(View):
                         payment_details=payment_details
                     )
                     print(obj)
+
             except Exception as e:
                 print('Error occurred:', str(e))
                 return JsonResponse({'error': str(e)}, status=500)

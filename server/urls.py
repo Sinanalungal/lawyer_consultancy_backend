@@ -41,6 +41,7 @@ urlpatterns = [
     path('schedule/', include('schedule.urls')),
     path('userside/', include('userside.urls')),
     path('wallet/', include('wallet.urls')),
+    path('dashboard/', include('dashboard.urls')),
     # path("graphql/", GraphQLView.as_view(graphiql=True)),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

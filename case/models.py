@@ -29,7 +29,7 @@ class Case(TimeStampedModel):
 
     class Meta:
     
-        ordering = ['-created_time']  
+        ordering = ['-created_time']
 
 class SelectedCases(models.Model):
     lawyer = models.ForeignKey(LawyerProfile, on_delete=models.CASCADE)

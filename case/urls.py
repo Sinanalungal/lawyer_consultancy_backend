@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CaseListCreateView,CreateAllotedCaseView,CaseFinished,UserAllotedCasesView, CaseDetailView,StateListView,CaseListView,UnlistCaseView,SelectedCasesView
+from .views import CaseListCreateView,AllotedCasesListView,CreateAllotedCaseView,CaseFinished,UserAllotedCasesView, CaseDetailView,StateListView,CaseListView,UnlistCaseView,SelectedCasesView
 
 urlpatterns = [
     path('cases/', CaseListCreateView.as_view(), name='case-list-create'),
@@ -12,6 +12,7 @@ urlpatterns = [
     path('alloted-cases/create/', CreateAllotedCaseView.as_view(), name='create-alloted-case'),
     path('alloted-cases/my-cases/', UserAllotedCasesView.as_view(), name='user-alloted-cases'),
     path('approve-finished/<int:pk>/', CaseFinished.as_view(), name='unlist-case'),
+    path('alloted-cases/', AllotedCasesListView.as_view(), name='alloted-cases-list'),
 ]
 
 

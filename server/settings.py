@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    "graphene_django",  
+    # "graphene_django",  
     'api',
     'channels',
     'adminside',
@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'schedule',
     'userside',
     'wallet',
+    'dashboard',
 ]
 
 MIDDLEWARE = [

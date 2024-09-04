@@ -9,3 +9,5 @@ class CaseFilter(filters.FilterSet):
     class Meta:
         model = Case
         fields = ['case_type', 'state', 'status']
+
+

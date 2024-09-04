@@ -72,33 +72,33 @@ class BookedAppointment(models.Model):
     is_canceled = models.BooleanField(default=False)
     payment_details = models.OneToOneField(PaymentDetails, on_delete=models.CASCADE, null=True, blank=True)
     
-    
-def clean(self):
-    if not self.scheduling:
-        raise ValidationError('Scheduling must be provided.')
+    #=====this validation checking =====    
+    def clean(self):
+        if not self.scheduling:
+            raise ValidationError('Scheduling must be provided.')
 
-    if not self.user_profile:
-        raise ValidationError('User must be provided.')
+        if not self.user_profile:
+            raise ValidationError('User must be provided.')
 
-    if self.scheduling.is_canceled or not(self.scheduling.is_listed):
-        raise ValidationError('Cannot book an appointment for a canceled or completed schedule.')
+        if self.scheduling.is_canceled or not(self.scheduling.is_listed):
+            raise ValidationError('Cannot book an appointment for a canceled or completed schedule.')
 
-    now = datetime.now()
+        now = datetime.now()
 
-    # Parse session_date if it's a string
-    if isinstance(self.session_date, str):
-        try:
-            self.session_date = datetime.fromisoformat(self.session_date)
-        except ValueError:
-            raise ValidationError('Invalid session date format.')
+        # Parse session_date if it's a string
+        if isinstance(self.session_date, str):
+            try:
+                self.session_date = datetime.fromisoformat(self.session_date)
+            except ValueError:
+                raise ValidationError('Invalid session date format.')
 
-    # Ensure the session_date is within the valid period
-    if not (self.scheduling.date <= now.date() <= self.scheduling.reference_until):
-        raise ValidationError('Session date is not within the valid period.')
+        # Ensure the session_date is within the valid period
+        if not (self.scheduling.date <= now.date() <= self.scheduling.reference_until):
+            raise ValidationError('Session date is not within the valid period.')
 
-    # Check if booking is for a future time
-    if (self.session_date.date() == now.date() and self.session_date.time() <= now.time()) :
-        raise ValidationError('Cannot book an appointment for a past time.')
-    
+        # Check if booking is for a future time
+        if (self.session_date.date() == now.date() and self.session_date.time() <= now.time()) :
+            raise ValidationError('Cannot book an appointment for a past time.')
+        
     def __str__(self):
         return f'Booked Appointment for {self.user_profile} on {self.scheduling.date} at {self.scheduling.start_time}'
