@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Scheduling,LawyerProfile,BookedAppointment
+from .models import Scheduling,LawyerProfile,BookedAppointment,PaymentDetails
 from api.models import CustomUser
 from datetime import datetime, timedelta
 
@@ -77,3 +77,18 @@ class SchedulingSerializerForAdmin(serializers.ModelSerializer):
     class Meta:
         model = Scheduling
         fields = ['id', 'date', 'start_time', 'end_time', 'price', 'lawyer_profile','is_listed']
+
+
+class PaymentDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentDetails
+        fields = '__all__'
+
+class BookedAppointmentSerializerForSalesReport(serializers.ModelSerializer):
+    payment_details = PaymentDetailsSerializer()
+    scheduling = SchedulingSerializerForAdmin()
+    user_profile= CustomUserSerializer()
+
+    class Meta:
+        model= BookedAppointment
+        fields = '__all__'

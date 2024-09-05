@@ -3,6 +3,7 @@ from django.db import models
 from api.models import LawyerProfile,CustomUser
 from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 class Scheduling(models.Model):
     # uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -67,12 +68,14 @@ class BookedAppointment(models.Model):
     user_profile = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  
     session_date = models.DateTimeField(default=None, null=True, blank=True) 
     booked_at = models.DateTimeField(auto_now_add=True)
+    #-----------------------not required--------------------
     is_transaction_completed = models.BooleanField(default=False)
+    #-------------------------------------------------------
     is_completed = models.BooleanField(default=False)
     is_canceled = models.BooleanField(default=False)
     payment_details = models.OneToOneField(PaymentDetails, on_delete=models.CASCADE, null=True, blank=True)
     
-    #=====this validation checking =====    
+
     def clean(self):
         if not self.scheduling:
             raise ValidationError('Scheduling must be provided.')
