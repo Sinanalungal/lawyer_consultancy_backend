@@ -7,9 +7,8 @@ class ThreadManager(models.Manager):
     def by_user(self, **kwargs):
         print(kwargs)
         user = kwargs.get('user')
-        lookup = Q(first_person=user) | Q(second_person=user)
+        lookup = (Q(first_person=user ) | Q(second_person=user)) &( Q(first_person__is_verified=True) & Q(second_person__is_verified=True))
         qs = self.get_queryset().filter(lookup).distinct()
-        # print(qs,'this is the queryset of perticulat user')
         return qs
     
     def involving_both_users(self, user1_id, user2_id):

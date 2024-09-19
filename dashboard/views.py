@@ -6,19 +6,22 @@ from api.models import CustomUser
 from django.db.models import Sum, F, Q, ExpressionWrapper, FloatField
 from schedule.models import BookedAppointment
 from case.models import AllotedCases
+from server.permissions import VerifiedUser,IsAdmin,IsLawyer
+from datetime import datetime
+from django.db.models.functions import ExtractMonth
 
 
 class UserGrowthView(APIView):
     """
     API view to provide data for user growth chart.
     """
+    permission_classes = [IsAdmin,VerifiedUser]
 
     def get(self, request, *args, **kwargs):
         total_users = CustomUser.objects.count()
         total_lawyers = CustomUser.objects.filter(role='lawyer').count()
         non_canceled_appointments = BookedAppointment.objects.filter(Q(is_canceled=False) & Q(is_completed=True))
 
-        # Calculate user and lawyer growth over the past 12 months
         months = []
         user_growth = []
         lawyer_growth = []
@@ -60,15 +63,14 @@ class UserGrowthView(APIView):
             'top_lawyers': top_lawyers,
         })
 
-from datetime import datetime
-from django.db.models.functions import ExtractMonth
 
 
 class LawyerDashboardView(APIView):
     """
     API view to provide data for user growth chart.
     """
-
+    permission_classes = [IsLawyer,VerifiedUser]
+    
     def get(self, request, *args, **kwargs):
         try:
             non_canceled_appointments = BookedAppointment.objects.filter(

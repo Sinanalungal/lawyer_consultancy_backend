@@ -13,6 +13,8 @@ from django.utils import timezone
 from django.db.models import Q
 from django.db import transaction
 from rest_framework.filters import SearchFilter
+from django.db.models import Count
+from django.db.models import OuterRef, Exists
 
 
 
@@ -20,12 +22,39 @@ class CaseListCreateView(generics.ListCreateAPIView):
     serializer_class = CaseSerializer
 
     def get_queryset(self):
-        """
-        Optionally restricts the returned cases to the ones related to the logged-in user.
-        """
         user = self.request.user
+        selected_filter = self.request.query_params.get('selected', 'all')
+
         if user.is_authenticated:
-            return Case.objects.filter(user=user).filter(Q(is_listed=True)&Q(status='Pending'))
+            # Mark outdated cases
+            Case.objects.filter(
+                user=user,
+                is_listed=True,
+                status='Pending',
+                reference_until__lt=timezone.now()
+            ).update(status='Outdated')
+
+            # Base queryset
+            queryset = Case.objects.filter(user=user, is_listed=True).filter(
+                Q(status='Pending') | Q(status='Outdated')
+            )
+
+            # Determine if a case is selected
+            selected_cases_subquery = SelectedCases.objects.filter(
+                case_model=OuterRef('pk')
+            )
+
+            if selected_filter == 'selected':
+                queryset = queryset.filter(
+                    Exists(selected_cases_subquery)
+                )
+            elif selected_filter == 'unselected':
+                queryset = queryset.filter(
+                    ~Exists(selected_cases_subquery)
+                )
+
+            return queryset
+
         return Case.objects.none()
 
     def post(self, request, *args, **kwargs):
@@ -89,7 +118,6 @@ class UnlistCaseView(generics.UpdateAPIView):
         return Response({"detail": "Case has been unlisted successfully."}, status=status.HTTP_200_OK)
 
 
-
 class SelectedCasesView(generics.GenericAPIView):
     queryset = SelectedCases.objects.all()
     serializer_class = SelectedCasesSerializer
@@ -121,7 +149,6 @@ class SelectedCasesView(generics.GenericAPIView):
 
     def perform_create(self, serializer, lawyer):
         serializer.save(lawyer=lawyer)
-
 
 class CreateAllotedCaseView(generics.CreateAPIView):
     serializer_class = AllotedCasesSerializer

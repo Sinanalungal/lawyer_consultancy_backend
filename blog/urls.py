@@ -8,9 +8,11 @@ urlpatterns = [
     path('blogs/update_is_listed/', views.BlogUpdateIsListedView.as_view(), name='blog-update-is-listed'),
     path('blogs/like/', views.LikeBlogView.as_view(), name='like-blog'),
     path('blogs/comments/', views.CommentBlogView.as_view(), name='comment-blog'),
-    path('blogs/report/', views.ReportBlogView.as_view(), name='report-blog'),
+    path('blogs/report/<int:pk>/', views.ReportBlogView.as_view(), name='report-blog'),
     path('blogs/save/', views.SaveBlogView.as_view(), name='save-blog'),
-
+    path('comments/edit/<int:pk>/', views.CommentEditView.as_view(), name='edit-comment'),
+    path('comments/delete/<int:pk>/', views.CommentDeleteView.as_view(), name='delete-comment'),
+    path('blog-update/<int:id>/', views.BlogDetailUpdateDeleteView.as_view(), name='blog-detail-update-delete'),
     # path('blogs/<int:pk>/', views.BlogDetailAPIView.as_view(), name='blog-detail'),
     # path('likes/', views.LikeAPIView.as_view(), name='like-create'),
     # path('comments/', views.CommentCreateAPIView.as_view(), name='comment-create'),

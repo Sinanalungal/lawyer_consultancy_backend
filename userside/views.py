@@ -3,11 +3,12 @@ from rest_framework.permissions import IsAuthenticated
 from api.models import LawyerProfile
 from .serializers import LawyerProfileSerializer
 from django.db.models import Q
+from server.permissions import VerifiedUser
 
 
 class VerifiedLawyerProfileListView(generics.ListAPIView):
     serializer_class = LawyerProfileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,VerifiedUser]
 
     def get_queryset(self):
         queryset = LawyerProfile.objects.filter(user__is_verified=True).all()
@@ -42,9 +43,6 @@ class VerifiedLawyerProfileListView(generics.ListAPIView):
             elif experience=="Greater than ten":
                 queryset = queryset.filter(experience__gt=10)
 
-        # # Apply rating filter
-        # rating = self.request.query_params.get('rating', None)
-        # if rating and rating != "All":
-        #     queryset = queryset.filter(rating=rating)
+ 
 
         return queryset

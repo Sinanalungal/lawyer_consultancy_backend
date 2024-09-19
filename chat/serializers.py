@@ -1,7 +1,6 @@
 # serializers.py
 from rest_framework import serializers
 from .models import Thread, ChatMessage
-from api.serializers import UserDetailSerializer
 from api.models import CustomUser
 from decouple import config
 
@@ -51,15 +50,17 @@ class ThreadSerializer(serializers.ModelSerializer):
     def get_other_user(self, obj):
         request_user = self.context['request'].user
         if obj.first_person == request_user:
-            return UserDetailSerializer(obj.second_person).data
-        return UserDetailSerializer(obj.first_person).data
+            # Pass the request context to UserDetailSerializer
+            return UserDetailSerializer(obj.second_person, context=self.context).data
+        # Pass the request context to UserDetailSerializer
+        return UserDetailSerializer(obj.first_person, context=self.context).data
 
     def get_last_message(self, obj):
-        # Fetch the last message in the thread
         last_message = ChatMessage.objects.filter(thread=obj).order_by('-timestamp').first()
         if last_message:
             return ChatMessageSerializer(last_message).data
         return None
+
     
 class ThreadForSiganlsSerializer(serializers.ModelSerializer):
     other_user = serializers.SerializerMethodField()

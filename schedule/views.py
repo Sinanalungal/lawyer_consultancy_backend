@@ -2,7 +2,7 @@ from rest_framework import generics, filters
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from server.permissions import IsLawyer, IsAdmin
+from server.permissions import IsLawyer, IsAdmin,VerifiedUser
 from django.core.exceptions import ValidationError
 from .models import Scheduling, BookedAppointment, PaymentDetails
 from .serializers import (
@@ -35,7 +35,7 @@ from rest_framework.filters import SearchFilter
 class SchedulingCreateView(generics.CreateAPIView):
     queryset = Scheduling.objects.all()
     serializer_class = SchedulingSerializer
-    permission_classes = [IsLawyer]
+    permission_classes = [IsLawyer,VerifiedUser]
 
     def perform_create(self, serializer):
         user_email = self.request.user.email
@@ -59,7 +59,7 @@ class SchedulingCreateView(generics.CreateAPIView):
 
 class UserSessionsView(generics.ListAPIView):
     serializer_class = ScheduledSerializer
-    permission_classes = [IsLawyer]
+    permission_classes = [IsLawyer,VerifiedUser]
     pagination_class = None
 
     def get_queryset(self):
@@ -69,7 +69,7 @@ class UserSessionsView(generics.ListAPIView):
 
 class ActiveSchedulesView(generics.ListAPIView):
     serializer_class = SheduledSerilizerForUserSide
-    permission_classes = [IsLawyer]
+    permission_classes = [IsLawyer,VerifiedUser]
 
     def get_queryset(self):
         user = self.request.user.email
@@ -77,7 +77,7 @@ class ActiveSchedulesView(generics.ListAPIView):
 
 
 class CancelScheduleView(generics.UpdateAPIView):
-    permission_classes = [IsLawyer]
+    permission_classes = [IsLawyer,VerifiedUser]
     queryset = Scheduling.objects.all()
     lookup_field = 'uuid'
 
@@ -92,6 +92,7 @@ class CancelScheduleView(generics.UpdateAPIView):
 
 
 class AvailableSlotsView(generics.GenericAPIView):
+    permission_classes=[IsAuthenticated,VerifiedUser]
     def get(self, request, *args, **kwargs):
         date_str = request.query_params.get('date')
         lawyer_id = request.query_params.get('lawyer_id')
@@ -156,7 +157,7 @@ class BookAppointmentView(APIView):
     """
     API view to create a Stripe checkout session for booking an appointment.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,VerifiedUser]
 
     def post(self, request, *args, **kwargs):
         try:
@@ -203,7 +204,7 @@ class BookAppointmentView(APIView):
                     mode='payment',
                     success_url=settings.DOMAIN_URL + 'user/available-sessions/' +
                     '?success={CHECKOUT_SESSION_ID}',
-                    cancel_url=settings.DOMAIN_URL + 'cancel',
+                    cancel_url=settings.DOMAIN_URL + f"user/available-sessions/?cancel=true",
                     metadata={
                         'scheduling_uuid': scheduling_uuid,
                         'scheduling_date': scheduling_date_str,
@@ -282,7 +283,6 @@ class StripeWebhookView(View):
                         latest_wallet_balance)+price_for_lawyer
                     WalletTransactions.objects.create(user=lawyer_obj, payment_details=payment_details,
                                                       wallet_balance=latest_wallet_balance, amount=price_for_lawyer, transaction_type='credit')
-                    # ---------------------------------------------
 
                     scheduling.is_listed = False
                     scheduling.save()
@@ -333,7 +333,7 @@ class StripeWebhookView(View):
 
 class BookedAppointmentsListView(generics.ListAPIView):
     serializer_class = BookedAppointmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,VerifiedUser]
 
     def get_queryset(self):
         query_param = self.request.query_params.get('type')
@@ -367,7 +367,6 @@ class BookedAppointmentsListView(generics.ListAPIView):
                 ).select_related('scheduling__lawyer_profile')
 
         elif user.role == 'user':
-            # If the user is a regular user, filter by their user profile
             if query_param == 'upcoming':
                 print('getting in to the user upcoming')
                 return BookedAppointment.objects.filter(
@@ -405,6 +404,7 @@ class SchedulingListViewForAdmin(generics.ListAPIView):
     serializer_class = SchedulingSerializerForAdmin
     pagination_class = PageNumberPagination
     filter_backends = [SearchFilter]
+    permission_classes = [IsAdmin,VerifiedUser]
     search_fields = ['date', 'start_time', 'end_time',
                      'price', 'lawyer_profile__user__full_name']
 
@@ -421,6 +421,7 @@ class SchedulingListViewForAdmin(generics.ListAPIView):
 class SchedulingUpdateViewAdmin(generics.UpdateAPIView):
     queryset = Scheduling.objects.all()
     serializer_class = SchedulingSerializerForAdmin
+    permission_classes = [IsAdmin,VerifiedUser]
 
     def patch(self, request, *args, **kwargs):
         scheduling_id = kwargs.get('pk')
@@ -441,7 +442,7 @@ class SchedulingUpdateViewAdmin(generics.UpdateAPIView):
 
 class SuccessFullSessionReportView(generics.ListAPIView):
     serializer_class = BookedAppointmentSerializerForSalesReport
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdmin,VerifiedUser]
     filter_backends = [filters.SearchFilter]
     search_fields = ['user_profile__full_name',
                      'scheduling__lawyer_profile__user__full_name']
@@ -480,7 +481,7 @@ class SuccessFullSessionReportView(generics.ListAPIView):
 
 class ForDownloadDataFetching(generics.ListAPIView):
     serializer_class = BookedAppointmentSerializerForSalesReport
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdmin,VerifiedUser]
     filter_backends = [filters.SearchFilter]
     search_fields = ['user_profile__full_name',
                      'scheduling__lawyer_profile__user__full_name']

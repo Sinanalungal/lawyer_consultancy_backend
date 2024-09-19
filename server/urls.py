@@ -44,4 +44,6 @@ urlpatterns = [
     path('dashboard/', include('dashboard.urls')),
     # path("graphql/", GraphQLView.as_view(graphiql=True)),
 
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+if settings.DEBUG:
+    urlpatterns+= static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

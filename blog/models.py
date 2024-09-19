@@ -1,9 +1,10 @@
 from django.db import models
 from api.models import CustomUser
 
+
 class Blog(models.Model):
     """
-    Represents a blog post.
+    Represents a blog post with status management.
 
     Attributes:
         user (ForeignKey): The user who created the blog post.
@@ -12,21 +13,26 @@ class Blog(models.Model):
         image (ImageField): An image associated with the blog post.
         content (TextField): The main content of the blog post.
         created_at (DateTimeField): The date and time when the blog post was created.
-        checked (BooleanField): Indicates if the blog post has been checked.
-        valid (BooleanField): Indicates if the blog post is valid.
+        status (CharField): The status of the blog post (Pending, Listed, Blocked).
     """
+
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Listed', 'Listed'),
+        ('Blocked', 'Blocked'),
+    ]
+
     user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
     image = models.ImageField(upload_to='blog/')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    # checked = models.BooleanField(default=False)
-    is_listed = models.BooleanField(default=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
 
     def __str__(self):
         """Return the title of the blog post."""
-        return self.title
+        return f"{self.pk}"
 
 
 class Like(models.Model):
@@ -102,7 +108,7 @@ class Report(models.Model):
     user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
     blog = models.ForeignKey(Blog, null=False, blank=False, on_delete=models.CASCADE)
     note = models.TextField(blank=False, null=False)
-    report = models.BooleanField(default=False)
+    report = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ('user', 'blog')
@@ -110,3 +116,5 @@ class Report(models.Model):
     def __str__(self):
         """Return the primary key of the report."""
         return str(self.pk)
+
+

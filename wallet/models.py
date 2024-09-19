@@ -9,7 +9,7 @@ class WalletTransactions(models.Model):
     ]
 
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-    payment_details = models.OneToOneField(PaymentDetails, on_delete=models.CASCADE, null=True, blank=True)
+    payment_details = models.ForeignKey(PaymentDetails, on_delete=models.CASCADE, null=True, blank=True)
     wallet_balance = models.DecimalField(max_digits=12,decimal_places=2)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)

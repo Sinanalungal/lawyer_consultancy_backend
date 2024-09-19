@@ -23,6 +23,13 @@ class IsUser(BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.role == 'user'
 
+class VerifiedUser(BasePermission):
+    """
+    Custom permission to only allow users with 'admin' role.
+    """
+    def has_permission(self, request, view):
+        return request.user.is_verified
+
 
 class IsAdminOrLawyer(BasePermission):
     """
@@ -30,3 +37,13 @@ class IsAdminOrLawyer(BasePermission):
     """
     def has_permission(self, request, view):
         return request.user and (request.user.role == 'admin' or request.user.role == 'lawyer')
+
+
+class IsOwner(BasePermission):
+    """
+    Custom permission to only allow the owner of the blog to edit or delete it.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        
+        return obj.user == request.user

@@ -12,7 +12,7 @@ class Case(TimeStampedModel):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
         ('Accepted', 'Accepted'),
-        # ('Rejected', 'Rejected'),
+        ('Outdated', 'Outdated'),
     ]
 
     case_type = models.CharField(max_length=255)
