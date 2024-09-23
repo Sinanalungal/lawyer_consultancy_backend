@@ -256,3 +256,33 @@ class BlogDetailUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwner, VerifiedUser]
     lookup_field = 'id'
     
+
+class PersonalBlogListAPIView(generics.ListAPIView):
+    """
+    API view to retrieve a paginated list of blog posts.
+    """
+    serializer_class = BlogSerializer
+    permission_classes = [IsOwner,VerifiedUser] 
+    pagination_class = PageNumberPagination
+    page_size = 10
+
+    def get_queryset(self):
+        """Return the list of blogs."""
+        queryset = Blog.objects.all()
+
+
+        status = self.request.query_params.get('status')
+        print(status)
+        if status :
+            print('getting into this')
+            queryset = queryset.filter(status=status,user=self.request.user)
+            
+
+        search_query = self.request.query_params.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) |
+                Q(content__icontains=search_query)
+            )
+
+        return queryset

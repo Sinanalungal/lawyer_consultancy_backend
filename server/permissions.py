@@ -47,3 +47,12 @@ class IsOwner(BasePermission):
     def has_object_permission(self, request, view, obj):
         
         return obj.user == request.user
+    
+class ObjectBasedUsers(BasePermission):
+    """
+    Custom permission to only allow the owner of the blog to edit or delete it.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        
+        return (obj.user_profile == request.user) or (request.user ==obj.scheduling.lawyer_profile.user ) or request.user.role == 'admin'

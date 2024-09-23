@@ -2,7 +2,7 @@ from rest_framework import generics, filters
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from server.permissions import IsLawyer, IsAdmin,VerifiedUser
+from server.permissions import IsLawyer, IsAdmin,VerifiedUser,ObjectBasedUsers
 from django.core.exceptions import ValidationError
 from .models import Scheduling, BookedAppointment, PaymentDetails
 from .serializers import (
@@ -30,6 +30,7 @@ from django.utils import timezone
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
+from decimal import Decimal 
 
 
 class SchedulingCreateView(generics.CreateAPIView):
@@ -178,12 +179,17 @@ class BookAppointmentView(APIView):
 
             scheduling = get_object_or_404(Scheduling, pk=scheduling_uuid)
 
-            session_date = datetime.combine(
-                scheduling_date, scheduling.start_time)
-
-            if BookedAppointment.objects.filter(scheduling=scheduling).exists():
+            # session_date = datetime.combine(
+            #     scheduling_date, scheduling.start_time)
+            
+            if not scheduling.is_listed or scheduling.is_canceled:
                 print('session is not available now')
                 return Response({'error': 'Session is not available now.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+            # if BookedAppointment.objects.filter(scheduling=scheduling).exists():
+            #     print('session is not available now')
+            #     return Response({'error': 'Session is not available now.'}, status=status.HTTP_400_BAD_REQUEST)
 
             session_price = int(scheduling.price * 100)
             try:
@@ -224,7 +230,6 @@ class BookAppointmentView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class StripeWebhookView(View):
     endpoint_secret = 'whsec_e883094ce98575db46ef700f91d94786f4b4cec88e05d6c7c3cc7c753e5543cd'
-    # settings.STRIPE_WEBHOOK_SECRET
 
     def post(self, request, *args, **kwargs):
         payload = request.body
@@ -236,6 +241,15 @@ class StripeWebhookView(View):
                 payload, sig_header, self.endpoint_secret
             )
             print(event)
+            session = event['data']['object']
+
+            if event['type'] == 'checkout.session.completed':
+                if session['metadata']['payment_for'] == 'session':
+                    return self.handle_session_payment(session)
+                elif session['metadata']['payment_for'] == 'wallet':
+                    return self.handle_wallet_payment(session)
+
+            return JsonResponse({'status': 'success'}, status=200)
         except ValueError:
             print('Invalid payload')
             return JsonResponse({'error': 'Invalid payload'}, status=400)
@@ -243,94 +257,103 @@ class StripeWebhookView(View):
             print('Invalid signature')
             return JsonResponse({'error': 'Invalid signature'}, status=400)
 
-        session = event['data']['object']
-        if event['type'] == 'checkout.session.completed' and session['metadata']['payment_for'] == 'session':
-            scheduling_uuid = session['metadata']['scheduling_uuid']
-            scheduling_date_str = session['metadata']['scheduling_date']
-            user_id = session['metadata']['user_id']
-            print('working')
-            try:
-                with transaction.atomic():
-                    scheduling = Scheduling.objects.get(pk=scheduling_uuid)
-                    scheduling_date = datetime.strptime(
-                        scheduling_date_str, '%Y-%m-%d').date()
-                    lawyer_obj = scheduling.lawyer_profile.user
-                    payment_details = PaymentDetails.objects.create(
-                        payment_method=session['payment_method_types'][0],
-                        transaction_id=session['payment_intent'],
-                        payment_for='session'
-                    )
+        
 
-                    obj = BookedAppointment.objects.create(
-                        scheduling=scheduling,
-                        user_profile_id=user_id,
-                        session_date=datetime.combine(
-                            scheduling_date, scheduling.start_time),
-                        payment_details=payment_details,
-                        is_transaction_completed=True,
-                    )
+    def handle_session_payment(self, session):
+        scheduling_uuid = session['metadata']['scheduling_uuid']
+        scheduling_date_str = session['metadata']['scheduling_date']
+        user_id = session['metadata']['user_id']
+        print('working')
 
-                    try:
-                        latest_transaction = WalletTransactions.objects.filter(
-                            user=lawyer_obj).latest('created_at')
-                        print(latest_transaction)
-                        latest_wallet_balance = latest_transaction.wallet_balance
-                    except:
-                        latest_wallet_balance = 0
+        try:
+            with transaction.atomic():
+                # Fetch scheduling and related information
+                scheduling = Scheduling.objects.select_for_update().get(pk=scheduling_uuid)
+                scheduling_date = datetime.strptime(scheduling_date_str, '%Y-%m-%d').date()
+                # lawyer_obj = scheduling.lawyer_profile.user
 
-                    price_for_lawyer = (float(scheduling.price)*0.9)
-                    latest_wallet_balance = float(
-                        latest_wallet_balance)+price_for_lawyer
-                    WalletTransactions.objects.create(user=lawyer_obj, payment_details=payment_details,
-                                                      wallet_balance=latest_wallet_balance, amount=price_for_lawyer, transaction_type='credit')
+                # Create payment details
+                payment_details = PaymentDetails.objects.create(
+                    payment_method=session['payment_method_types'][0],
+                    transaction_id=session['payment_intent'],
+                    payment_for='session'
+                )
 
-                    scheduling.is_listed = False
-                    scheduling.save()
+                # Create the booked appointment
+                BookedAppointment.objects.create(
+                    scheduling=scheduling,
+                    user_profile_id=user_id,
+                    session_date=datetime.combine(scheduling_date, scheduling.start_time),
+                    payment_details=payment_details,
+                    # is_transaction_completed=True,
+                )
+                #---------------we dont put money now in the lawyer wallet , it is only posssible after completing the session----
 
-            except Scheduling.DoesNotExist:
-                print('Scheduling does not exist')
-                return JsonResponse({'error': 'Scheduling not found'}, status=400)
-            except Exception as e:
-                print('Error occurred:', str(e))
-                return JsonResponse({'error': str(e)}, status=500)
-        elif event['type'] == 'checkout.session.completed' and session['metadata']['payment_for'] == 'wallet':
-            print('getting to the wallet working part....')
-            user_id = session['metadata']['user_id']
-            try:
-                with transaction.atomic():
-                    payment_details = PaymentDetails.objects.create(
-                        payment_method=session['payment_method_types'][0],
-                        transaction_id=session['payment_intent'],
-                        payment_for='wallet'
-                    )
+                # Calculate wallet balance and update
+#                 latest_transaction = WalletTransactions.objects.filter(
+#                     user=lawyer_obj).order_by('-created_at').first()
 
-                    try:
-                        latest_transaction = WalletTransactions.objects.filter(
-                            user=lawyer_obj).latest('created_at')
-                        print(latest_transaction)
-                        latest_wallet_balance = latest_transaction.wallet_balance
-                    except:
-                        latest_wallet_balance = 0
+#                 latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
+#                 price_for_lawyer = float(scheduling.price) * 0.9
+#                 latest_wallet_balance += Decimal(price_for_lawyer
+# )
+#                 WalletTransactions.objects.create(
+#                     user=lawyer_obj,
+#                     payment_details=payment_details,
+#                     wallet_balance=latest_wallet_balance,
+#                     amount=price_for_lawyer,
+#                     transaction_type='credit'
+#                 )
 
-                    print(latest_wallet_balance)
-                    print(session)
-                    price = float(session['amount_subtotal'])/100
-                    print(price)
-                    obj = WalletTransactions.objects.create(
-                        wallet_balance=float(latest_wallet_balance)+price,
-                        amount=price,
-                        transaction_type='credit',
-                        user_id=int(user_id),
-                        payment_details=payment_details
-                    )
-                    print(obj)
+                # Update the scheduling status
+                scheduling.is_listed = False
+                scheduling.save()
 
-            except Exception as e:
-                print('Error occurred:', str(e))
-                return JsonResponse({'error': str(e)}, status=500)
+        except Scheduling.DoesNotExist:
+            print('Scheduling does not exist')
+            return JsonResponse({'error': 'Scheduling not found'}, status=400)
+        except Exception as e:
+            print('Error occurred:', str(e))
+            return JsonResponse({'error': str(e)}, status=500)
+
         return JsonResponse({'status': 'success'}, status=200)
 
+    def handle_wallet_payment(self, session):
+        print('getting to the wallet working part....')
+        user_id = session['metadata']['user_id']
 
+        try:
+            with transaction.atomic():
+                # Create payment details for wallet transaction
+                payment_details = PaymentDetails.objects.create(
+                    payment_method=session['payment_method_types'][0],
+                    transaction_id=session['payment_intent'],
+                    payment_for='wallet'
+                )
+
+                # Fetch latest wallet balance for the user
+                latest_transaction = WalletTransactions.objects.filter(
+                    user_id=user_id).order_by('-created_at').first()
+
+                latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
+
+                # Calculate the new balance and create a wallet transaction
+                price = float(session['amount_subtotal']) / 100
+                latest_wallet_balance += Decimal(price)
+
+                WalletTransactions.objects.create(
+                    wallet_balance=latest_wallet_balance,
+                    amount=price,
+                    transaction_type='debit',
+                    user_id=int(user_id),
+                    payment_details=payment_details
+                )
+
+        except Exception as e:
+            print('Error occurred:', str(e))
+            return JsonResponse({'error': str(e)}, status=500)
+
+        return JsonResponse({'status': 'success'}, status=200)
 class BookedAppointmentsListView(generics.ListAPIView):
     serializer_class = BookedAppointmentSerializer
     permission_classes = [IsAuthenticated,VerifiedUser]
@@ -340,58 +363,53 @@ class BookedAppointmentsListView(generics.ListAPIView):
         now = timezone.now()
         user = self.request.user
         print(query_param)
+        
         if user.role == 'lawyer':
             lawyer_profile = user.lawyer_profile
             if query_param == 'upcoming':
+                # Show only future or active appointments that are not completed or canceled
                 print('getting in to the lawyer upcoming')
                 return BookedAppointment.objects.filter(
                     scheduling__lawyer_profile=lawyer_profile,
-                    is_transaction_completed=True,
                     is_completed=False,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__date__gt=now.date()) |
-                    (Q(session_date__date=now.date()) & Q(
-                        scheduling__end_time__gte=now.time()))
+                    Q(session_date__gt=now)  # Ensure the session date is in the future
                 ).select_related('scheduling__lawyer_profile')
             elif query_param == 'completed':
+                # Show only past or completed appointments
                 print('getting in to the lawyer finished')
                 return BookedAppointment.objects.filter(
                     scheduling__lawyer_profile=lawyer_profile,
-                    is_transaction_completed=True,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__date__lt=now.date()) |
-                    (Q(session_date__date=now.date()) & Q(
-                        scheduling__end_time__lt=now.time()))
+                    Q(session_date__lte=now)  # Ensure the session date is in the past
                 ).select_related('scheduling__lawyer_profile')
 
         elif user.role == 'user':
             if query_param == 'upcoming':
+                # For users, show only future or active appointments that are not completed or canceled
                 print('getting in to the user upcoming')
                 return BookedAppointment.objects.filter(
                     user_profile=user,
-                    is_transaction_completed=True,
                     is_completed=False,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__date__gt=now.date()) |
-                    (Q(session_date__date=now.date()) & Q(
-                        scheduling__end_time__gte=now.time()))
+                    Q(session_date__gt=now)  # Ensure the session date is in the future
                 ).select_related('scheduling__lawyer_profile')
+
             elif query_param == 'finished':
+                # For users, show only past or completed appointments
                 print('getting in to the user finished')
                 return BookedAppointment.objects.filter(
                     user_profile=user,
-                    is_transaction_completed=True,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__date__lt=now.date()) |
-                    (Q(session_date__date=now.date()) & Q(
-                        scheduling__end_time__lt=now.time()))
+                    Q(session_date__lte=now)  # Ensure the session date is in the past
                 ).select_related('scheduling__lawyer_profile')
 
         return BookedAppointment.objects.none()
+
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -438,6 +456,7 @@ class SchedulingUpdateViewAdmin(generics.UpdateAPIView):
                 return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"detail": "Bad request."}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class SuccessFullSessionReportView(generics.ListAPIView):
@@ -517,3 +536,43 @@ class ForDownloadDataFetching(generics.ListAPIView):
                            Q(scheduling__lawyer_profile__user__full_name__icontains=search))
 
         return qs.select_related('payment_details', 'scheduling__lawyer_profile__user', 'user_profile')
+
+
+# cancelling the booked session
+class CancelAppointmentView(APIView):
+    permission_classes = [ObjectBasedUsers]
+
+    def post(self, request, uuid):
+        print(uuid)
+        try:
+            with transaction.atomic():
+                appointment = BookedAppointment.objects.get(uuid=uuid)
+                print(appointment)
+                appointment.cancel()
+                # appointment.scheduling.price
+                latest_wallet_obj = WalletTransactions.objects.filter(user=appointment.user_profile).order_by('-created_at').first()
+                wallet_balance = latest_wallet_obj.wallet_balance if latest_wallet_obj else 0
+                # price_for_lawyer = float(latest_wallet_obj.price) * 0.9
+                latest_wallet_balance = (Decimal(wallet_balance)+Decimal(appointment.scheduling.price))
+                WalletTransactions.objects.create(
+                    wallet_balance=latest_wallet_balance,
+                    amount=Decimal(appointment.scheduling.price),
+                    transaction_type='debit',
+                    user=appointment.user_profile,
+                    payment_details=appointment.payment_details
+                )
+
+            return Response({"message": "Appointment canceled successfully"}, status=status.HTTP_200_OK)
+        except BookedAppointment.DoesNotExist:
+            return Response({"error": "Appointment not found or you're not authorized to cancel this appointment"}, status=status.HTTP_404_NOT_FOUND)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+# View Details of the completed appointment
+class BookedAppointmentDetailsView(generics.RetrieveAPIView):
+    queryset = BookedAppointment.objects.all()
+    permission_classes = [ObjectBasedUsers]
+    serializer_class = BookedAppointmentSerializer
+    lookup_field = 'uuid'
+
+    

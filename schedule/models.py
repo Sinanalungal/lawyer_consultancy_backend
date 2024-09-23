@@ -4,6 +4,8 @@ from api.models import LawyerProfile,CustomUser
 from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.utils import timezone
+
 
 class Scheduling(models.Model):
     # uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -62,19 +64,16 @@ class PaymentDetails(models.Model):
         return f'{self.transaction_id}:{self.created_at}'
 
 
+
 class BookedAppointment(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     scheduling = models.ForeignKey(Scheduling, on_delete=models.CASCADE)
-    user_profile = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  
-    session_date = models.DateTimeField(default=None, null=True, blank=True) 
+    user_profile = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    session_date = models.DateTimeField(default=None, null=True, blank=True)
     booked_at = models.DateTimeField(auto_now_add=True)
-    #-----------------------not required--------------------
-    is_transaction_completed = models.BooleanField(default=False)
-    #-------------------------------------------------------
     is_completed = models.BooleanField(default=False)
     is_canceled = models.BooleanField(default=False)
     payment_details = models.OneToOneField(PaymentDetails, on_delete=models.CASCADE, null=True, blank=True)
-    
 
     def clean(self):
         if not self.scheduling:
@@ -86,7 +85,7 @@ class BookedAppointment(models.Model):
         if self.scheduling.is_canceled or not(self.scheduling.is_listed):
             raise ValidationError('Cannot book an appointment for a canceled or completed schedule.')
 
-        now = datetime.now()
+        now = timezone.now()
 
         # Parse session_date if it's a string
         if isinstance(self.session_date, str):
@@ -100,8 +99,21 @@ class BookedAppointment(models.Model):
             raise ValidationError('Session date is not within the valid period.')
 
         # Check if booking is for a future time
-        if (self.session_date.date() == now.date() and self.session_date.time() <= now.time()) :
+        if (self.session_date.date() == now.date() and self.session_date.time() <= now.time()):
             raise ValidationError('Cannot book an appointment for a past time.')
+
+    def cancel(self):
+        if self.is_canceled:
+            raise ValidationError("This appointment is already canceled.")
+        if self.session_date < timezone.now():
+            raise ValidationError("Cannot cancel a past appointment.")
         
+        # Mark the appointment as canceled
+        self.is_canceled = True
+        scheduling_obj = self.scheduling
+        scheduling_obj.is_listed =True
+        scheduling_obj.save()
+
+        self.save()
     def __str__(self):
         return f'Booked Appointment for {self.user_profile} on {self.scheduling.date} at {self.scheduling.start_time}'

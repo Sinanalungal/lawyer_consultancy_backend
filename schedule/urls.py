@@ -14,4 +14,6 @@ urlpatterns = [
     path('schedule/update/<int:pk>/', views.SchedulingUpdateViewAdmin.as_view(), name='scheduling-update'),
     path('successfull-appointments/', views.SuccessFullSessionReportView.as_view(), name='successfull-ppointments'),
     path('pdf-downloading-data/', views.ForDownloadDataFetching.as_view(), name='pdf-downloading-data/'),
+    path('cancel-appointments/<str:uuid>/', views.CancelAppointmentView.as_view(), name='cancel-appointment'),
+    # path('details-of-appointment/<str:uuid>/',views.BookedAppointmentDetailsView.as_view(),name='details-of-appointment'),
 ]
