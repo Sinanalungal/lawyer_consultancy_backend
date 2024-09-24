@@ -69,7 +69,9 @@ class BookedAppointment(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     scheduling = models.ForeignKey(Scheduling, on_delete=models.CASCADE)
     user_profile = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    session_date = models.DateTimeField(default=None, null=True, blank=True)
+    # session_date = models.DateTimeField(default=None, null=True, blank=True)
+    session_start = models.DateTimeField(default=None, null=True, blank=True)
+    session_end = models.DateTimeField(default=None, null=True, blank=True)
     booked_at = models.DateTimeField(auto_now_add=True)
     is_completed = models.BooleanField(default=False)
     is_canceled = models.BooleanField(default=False)
@@ -88,24 +90,24 @@ class BookedAppointment(models.Model):
         now = timezone.now()
 
         # Parse session_date if it's a string
-        if isinstance(self.session_date, str):
+        if isinstance(self.session_start, str):
             try:
-                self.session_date = datetime.fromisoformat(self.session_date)
+                self.session_start = datetime.fromisoformat(self.session_start)
             except ValueError:
                 raise ValidationError('Invalid session date format.')
 
-        # Ensure the session_date is within the valid period
+        # Ensure the session_start is within the valid period
         if not (self.scheduling.date <= now.date() <= self.scheduling.reference_until):
             raise ValidationError('Session date is not within the valid period.')
 
         # Check if booking is for a future time
-        if (self.session_date.date() == now.date() and self.session_date.time() <= now.time()):
+        if (self.session_start.date() == now.date() and self.session_start.time() <= now.time()):
             raise ValidationError('Cannot book an appointment for a past time.')
 
     def cancel(self):
         if self.is_canceled:
             raise ValidationError("This appointment is already canceled.")
-        if self.session_date < timezone.now():
+        if self.session_start < timezone.now():
             raise ValidationError("Cannot cancel a past appointment.")
         
         # Mark the appointment as canceled

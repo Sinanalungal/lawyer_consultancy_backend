@@ -168,3 +168,16 @@ class BlogSerializerForRetrieveAndUpdate(serializers.ModelSerializer):
         model = Blog
         fields = '__all__' 
         read_only_fields = ['user', 'created_at'] 
+
+
+class SavedBlogSerializer(serializers.ModelSerializer):
+    blog = BlogUserSerializer()
+    class Meta:
+        model = Saved
+        fields = ['blog', 'saved', 'updated_at']
+
+class LikedBlogSerializer(serializers.ModelSerializer):
+    blog = BlogUserSerializer()
+    class Meta:
+        model = Like
+        fields = ['blog', 'like', 'updated_at']

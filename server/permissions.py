@@ -56,3 +56,7 @@ class ObjectBasedUsers(BasePermission):
     def has_object_permission(self, request, view, obj):
         
         return (obj.user_profile == request.user) or (request.user ==obj.scheduling.lawyer_profile.user ) or request.user.role == 'admin'
+    
+class SavedBlogAccess(BasePermission):
+    def has_object_permission(self,request,view,obj):
+        return obj.user == request.user 

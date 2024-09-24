@@ -283,7 +283,9 @@ class StripeWebhookView(View):
                 BookedAppointment.objects.create(
                     scheduling=scheduling,
                     user_profile_id=user_id,
-                    session_date=datetime.combine(scheduling_date, scheduling.start_time),
+                    session_start=datetime.combine(scheduling_date, scheduling.start_time),
+                    session_end=datetime.combine(scheduling_date, scheduling.end_time),
+                    # session_date=datetime.combine(scheduling_date, scheduling.start_time),
                     payment_details=payment_details,
                     # is_transaction_completed=True,
                 )
@@ -367,35 +369,36 @@ class BookedAppointmentsListView(generics.ListAPIView):
         if user.role == 'lawyer':
             lawyer_profile = user.lawyer_profile
             if query_param == 'upcoming':
-                # Show only future or active appointments that are not completed or canceled
                 print('getting in to the lawyer upcoming')
                 return BookedAppointment.objects.filter(
                     scheduling__lawyer_profile=lawyer_profile,
                     is_completed=False,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__gt=now)  # Ensure the session date is in the future
+                    # Q(session_date__gte=now.date()) & Q(scheduling__end_time__gte = now.time())
+                    Q(session_end__gte = now)
                 ).select_related('scheduling__lawyer_profile')
+
             elif query_param == 'completed':
-                # Show only past or completed appointments
                 print('getting in to the lawyer finished')
                 return BookedAppointment.objects.filter(
                     scheduling__lawyer_profile=lawyer_profile,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__lte=now)  # Ensure the session date is in the past
+                    # Q(session_date__lte=now)
+                    Q(session_end__lt=now) 
                 ).select_related('scheduling__lawyer_profile')
 
         elif user.role == 'user':
             if query_param == 'upcoming':
-                # For users, show only future or active appointments that are not completed or canceled
                 print('getting in to the user upcoming')
                 return BookedAppointment.objects.filter(
                     user_profile=user,
                     is_completed=False,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__gt=now)  # Ensure the session date is in the future
+                    # Q(session_date__gte=now.date()) & Q(scheduling__end_time__gte = now.time()) 
+                   Q(session_end__gte=now) 
                 ).select_related('scheduling__lawyer_profile')
 
             elif query_param == 'finished':
@@ -405,7 +408,8 @@ class BookedAppointmentsListView(generics.ListAPIView):
                     user_profile=user,
                     is_canceled=False,
                 ).filter(
-                    Q(session_date__lte=now)  # Ensure the session date is in the past
+                     Q(session_end__lt=now) 
+                    # Q(session_date__lt=now.date()) | (Q(session_date=now.date() )&Q(scheduling__end_time__lt = now.time())) # Ensure the session date is in the past
                 ).select_related('scheduling__lawyer_profile')
 
         return BookedAppointment.objects.none()

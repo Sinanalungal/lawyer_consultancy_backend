@@ -1,6 +1,6 @@
 from rest_framework import generics
 from .models import Blog, Like, Comment, Saved, Report
-from .serializer import BlogSerializer,BlogSerializerForRetrieveAndUpdate, BlogUpdateIsListedSerializer,BlogUserSerializer, ReportSerializer, CommentSerializer
+from .serializer import BlogSerializer,LikedBlogSerializer,SavedBlogSerializer,BlogSerializerForRetrieveAndUpdate, BlogUpdateIsListedSerializer,BlogUserSerializer, ReportSerializer, CommentSerializer
 # BlogReportSerializer,BlogValidUpdateSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from api.models import CustomUser
 from rest_framework import status
 from django.db.models import Q
-from server.permissions import IsAdmin, IsLawyer, IsAdminOrLawyer,VerifiedUser,IsOwner
+from server.permissions import IsAdmin,SavedBlogAccess, IsAdminOrLawyer,VerifiedUser,IsOwner
 from django.db.models import Count
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import ValidationError
@@ -286,3 +286,39 @@ class PersonalBlogListAPIView(generics.ListAPIView):
             )
 
         return queryset
+    
+# class UserSavedBlogs(generics.ListAPIView):
+#     serializer_class = SavedBlogSerializer
+#     permission_classes = [SavedBlogAccess]
+
+#     def get_queryset(self):
+#         return Saved.objects.filter(user=self.request.user).order_by('-updated_at')
+    
+# class UserLikedBlogs(generics.ListAPIView):
+#     serializer_class = LikedBlogSerializer
+#     permission_classes = [SavedBlogAccess]
+
+#     def get_queryset(self):
+#         return Like.objects.filter(user=self.request.user).order_by('-updated_at')
+    
+
+class UserSavedBlogs(APIView):
+    permission_classes = [SavedBlogAccess]
+
+    def get(self, request):
+        saved_blogs = Saved.objects.filter(user=self.request.user,blog__status='Listed').order_by('-updated_at')
+        paginator = PageNumberPagination()
+        result_page = paginator.paginate_queryset(saved_blogs, request)
+        serializer = SavedBlogSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+class UserLikedBlogs(APIView):
+    permission_classes = [SavedBlogAccess]
+
+    def get(self, request):
+        liked_blogs = Like.objects.filter(user=self.request.user,blog__status='Listed').order_by('-updated_at')
+        paginator = PageNumberPagination()
+        result_page = paginator.paginate_queryset(liked_blogs, request)
+        serializer = LikedBlogSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
