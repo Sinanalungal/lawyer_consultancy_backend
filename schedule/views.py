@@ -13,7 +13,9 @@ from .serializers import (
     SheduledSerilizerForUserSide,
     SchedulingSerializerForAdmin,
 )
+from datetime import timedelta
 from api.models import LawyerProfile
+from notifications.models import Notifications
 from rest_framework.views import APIView
 from django.utils.dateparse import parse_date
 from datetime import datetime
@@ -280,7 +282,7 @@ class StripeWebhookView(View):
                 )
 
                 # Create the booked appointment
-                BookedAppointment.objects.create(
+                appointment_obj=BookedAppointment.objects.create(
                     scheduling=scheduling,
                     user_profile_id=user_id,
                     session_start=datetime.combine(scheduling_date, scheduling.start_time),
@@ -289,6 +291,11 @@ class StripeWebhookView(View):
                     payment_details=payment_details,
                     # is_transaction_completed=True,
                 )
+                session_start_time = timezone.make_aware(datetime.combine(scheduling_date, scheduling.start_time))
+                print(session_start_time)
+                Notifications.objects.create(user_id=scheduling.lawyer_profile.user.pk,title='User booked an appointment',description=f"session id:{appointment_obj.uuid} scheduled for time:{appointment_obj.session_start}",notify_time = timezone.now() + timedelta(seconds=15))
+                Notifications.objects.create(user_id=user_id,title='Session will Starts Now',description=f"Appoinment id:{appointment_obj.uuid} session will starts now",notify_time = session_start_time )
+                Notifications.objects.create(user_id=scheduling.lawyer_profile.user.pk,title='Session will Starts Now',description=f"Appoinment id:{appointment_obj.uuid} session will starts now",notify_time = session_start_time)
                 #---------------we dont put money now in the lawyer wallet , it is only posssible after completing the session----
 
                 # Calculate wallet balance and update
@@ -356,6 +363,7 @@ class StripeWebhookView(View):
             return JsonResponse({'error': str(e)}, status=500)
 
         return JsonResponse({'status': 'success'}, status=200)
+    
 class BookedAppointmentsListView(generics.ListAPIView):
     serializer_class = BookedAppointmentSerializer
     permission_classes = [IsAuthenticated,VerifiedUser]

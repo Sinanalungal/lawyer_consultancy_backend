@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     'userside',
     'wallet',
     'dashboard',
+    'notifications',
+    'django_celery_results',
+    'django_celery_beat'
 ]
 
 MIDDLEWARE = [
@@ -193,13 +196,14 @@ USE_TZ = True
 # ]
 
 CHANNEL_LAYERS = {
-    'default':{
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        # 'CONFIG': {
-        #     "hosts": [('127.0.0.1', 6379)],
-        # },
-    }
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('localhost', 6379)], 
+        },
+    },
 }
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -231,3 +235,19 @@ DEFAULT_FROM_EMAIL =config("DEFAULT_FROM_EMAIL")
 
 STRIPE_API_KEY =  config("STRIPE_API_KEY")
 DOMAIN_URL=config("DOMAIN_URL")
+
+#CELERY SETTINGS
+
+# CELERY SETTINGS
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Correct: Sets Redis as the message broker
+CELERY_ACCEPT_CONTENT = ['application/json']  # Correct: Specifies accepted content types
+CELERY_RESULT_SERIALIZER = 'json'  # Correct: Sets the result serializer to JSON
+CELERY_TASK_SERIALIZER = 'json'  # Correct: Sets the task serializer to JSON
+CELERY_TIMEZONE = 'Asia/Kolkata'  # Correct: Sets the timezone for the application
+
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'  # Correct: Stores results in the Django database
+
+# CELERY BEAT
+
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'  # Correct: Uses the database scheduler for periodic tasks

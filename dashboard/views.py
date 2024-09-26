@@ -97,8 +97,8 @@ class LawyerDashboardView(APIView):
 
         booked_sessions = (
             BookedAppointment.objects.filter(scheduling__lawyer_profile=lawyer_profile)
-            .filter(session_date__year=current_year)
-            .annotate(month=ExtractMonth('session_date'))
+            .filter(session_start__year=current_year)
+            .annotate(month=ExtractMonth('session_start'))
             .values('month')
             .annotate(count=Count('id'))
             .order_by('month')

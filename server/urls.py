@@ -42,6 +42,7 @@ urlpatterns = [
     path('userside/', include('userside.urls')),
     path('wallet/', include('wallet.urls')),
     path('dashboard/', include('dashboard.urls')),
+    path('notification/', include('notifications.urls')),
     # path("graphql/", GraphQLView.as_view(graphiql=True)),
 
 ]
