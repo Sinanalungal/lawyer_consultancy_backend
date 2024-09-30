@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from server.permissions import IsLawyer, IsAdmin,VerifiedUser,ObjectBasedUsers
 from django.core.exceptions import ValidationError
-from .models import Scheduling, BookedAppointment, PaymentDetails
+from .models import Scheduling, BookedAppointment, PaymentDetails,CeleryTasks
 from .serializers import (
     SchedulingSerializer,
     BookedAppointmentSerializerForSalesReport,
@@ -33,6 +33,10 @@ from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
 from decimal import Decimal 
+import uuid
+from notifications.tasks import send_money_to_the_lawyer_wallet
+from django.shortcuts import get_object_or_404
+from celery import current_app
 
 
 class SchedulingCreateView(generics.CreateAPIView):
@@ -51,23 +55,42 @@ class SchedulingCreateView(generics.CreateAPIView):
         serializer.save(lawyer_profile=lawyer_profile)
 
     def create(self, request, *args, **kwargs):
-        print(request.data)
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-
+        try:
+            print(request.data)
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except ValidationError as e:
+            return Response({"detail": e}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e :
+            try:
+                error_details = e.detail
+            except:
+                error_details = str(e)
+        
+        # If there are non-field errors, extract them specifically
+            if 'non_field_errors' in error_details:
+                return Response(
+                    {"detail": error_details['non_field_errors']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(error_details, status=status.HTTP_400_BAD_REQUEST)    
+        # Otherwise, return the whole error object
+    
 class UserSessionsView(generics.ListAPIView):
     serializer_class = ScheduledSerializer
     permission_classes = [IsLawyer,VerifiedUser]
     pagination_class = None
 
     def get_queryset(self):
-        user = self.request.user.email
-        return Scheduling.objects.filter(lawyer_profile__user__email=user, is_listed=True, is_canceled=False)
+        user = self.request.user
+        date_time = timezone.now()
+        date=date_time.date()
+        time=date_time.time()
+        return Scheduling.objects.filter(lawyer_profile__user=user,date__gte=date,start_time__gt=time, is_listed=True, is_canceled=False)
 
 
 class ActiveSchedulesView(generics.ListAPIView):
@@ -79,19 +102,19 @@ class ActiveSchedulesView(generics.ListAPIView):
         return Scheduling.objects.filter(lawyer_profile__user__email=user, is_listed=True, is_canceled=False)
 
 
-class CancelScheduleView(generics.UpdateAPIView):
-    permission_classes = [IsLawyer,VerifiedUser]
-    queryset = Scheduling.objects.all()
-    lookup_field = 'uuid'
+# class CancelScheduleView(generics.UpdateAPIView):
+#     permission_classes = [IsLawyer,VerifiedUser]
+#     queryset = Scheduling.objects.all()
+#     lookup_field = 'uuid'
 
-    def update(self, request, *args, **kwargs):
-        schedule = self.get_object()
-        if schedule.is_canceled:
-            return Response({'detail': 'This schedule is already canceled.'}, status=status.HTTP_400_BAD_REQUEST)
+#     def update(self, request, *args, **kwargs):
+#         schedule = self.get_object()
+#         if schedule.is_canceled:
+#             return Response({'detail': 'This schedule is already canceled.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        schedule.is_canceled = True
-        schedule.save()
-        return Response({'detail': 'Schedule canceled successfully.'}, status=status.HTTP_200_OK)
+#         schedule.is_canceled = True
+#         schedule.save()
+#         return Response({'detail': 'Schedule canceled successfully.'}, status=status.HTTP_200_OK)
 
 
 class AvailableSlotsView(generics.GenericAPIView):
@@ -121,21 +144,23 @@ class AvailableSlotsView(generics.GenericAPIView):
 
         try:
             if date == today:
+                print('date is today')
                 scheduling_queryset = Scheduling.objects.filter(
                     lawyer_profile__pk=lawyer_id,
-                    date__lte=date,
+                    date=date,
                     is_listed=True,
                     is_canceled=False,
-                    reference_until__gte=date,
+                    # reference_until__gte=date,
                     start_time__gt=now_time
                 ).order_by('start_time')
             else:
+                print('date is not today')
                 scheduling_queryset = Scheduling.objects.filter(
                     lawyer_profile__pk=lawyer_id,
-                    date__lte=date,
+                    date=date,
                     is_listed=True,
                     is_canceled=False,
-                    reference_until__gte=date,
+                    # reference_until__gte=date,
                 ).order_by('start_time')
             print(scheduling_queryset)
             available_times = []
@@ -296,28 +321,16 @@ class StripeWebhookView(View):
                 Notifications.objects.create(user_id=scheduling.lawyer_profile.user.pk,title='User booked an appointment',description=f"session id:{appointment_obj.uuid} scheduled for time:{appointment_obj.session_start}",notify_time = timezone.now() + timedelta(seconds=15))
                 Notifications.objects.create(user_id=user_id,title='Session will Starts Now',description=f"Appoinment id:{appointment_obj.uuid} session will starts now",notify_time = session_start_time )
                 Notifications.objects.create(user_id=scheduling.lawyer_profile.user.pk,title='Session will Starts Now',description=f"Appoinment id:{appointment_obj.uuid} session will starts now",notify_time = session_start_time)
-                #---------------we dont put money now in the lawyer wallet , it is only posssible after completing the session----
-
-                # Calculate wallet balance and update
-#                 latest_transaction = WalletTransactions.objects.filter(
-#                     user=lawyer_obj).order_by('-created_at').first()
-
-#                 latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
-#                 price_for_lawyer = float(scheduling.price) * 0.9
-#                 latest_wallet_balance += Decimal(price_for_lawyer
-# )
-#                 WalletTransactions.objects.create(
-#                     user=lawyer_obj,
-#                     payment_details=payment_details,
-#                     wallet_balance=latest_wallet_balance,
-#                     amount=price_for_lawyer,
-#                     transaction_type='credit'
-#                 )
-
-                # Update the scheduling status
+             
                 scheduling.is_listed = False
                 scheduling.save()
-
+                session_end_time = timezone.make_aware(appointment_obj.session_end)
+                print((session_end_time- timedelta(minutes=5)),'this is the celery task scheduled time')
+                celery_task_obj = send_money_to_the_lawyer_wallet.apply_async(
+                    args=[scheduling.lawyer_profile.user.pk, payment_details.pk, appointment_obj.pk], 
+                    eta=(session_end_time - timedelta(minutes=5))
+                )
+                CeleryTasks.objects.create(appointment = appointment_obj,task_id = celery_task_obj.id)
         except Scheduling.DoesNotExist:
             print('Scheduling does not exist')
             return JsonResponse({'error': 'Scheduling not found'}, status=400)
@@ -333,27 +346,24 @@ class StripeWebhookView(View):
 
         try:
             with transaction.atomic():
-                # Create payment details for wallet transaction
                 payment_details = PaymentDetails.objects.create(
                     payment_method=session['payment_method_types'][0],
                     transaction_id=session['payment_intent'],
                     payment_for='wallet'
                 )
 
-                # Fetch latest wallet balance for the user
                 latest_transaction = WalletTransactions.objects.filter(
                     user_id=user_id).order_by('-created_at').first()
 
                 latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
 
-                # Calculate the new balance and create a wallet transaction
-                price = float(session['amount_subtotal']) / 100
+                price = Decimal(session['amount_subtotal']) / 100
                 latest_wallet_balance += Decimal(price)
 
                 WalletTransactions.objects.create(
                     wallet_balance=latest_wallet_balance,
                     amount=price,
-                    transaction_type='debit',
+                    transaction_type='credit',
                     user_id=int(user_id),
                     payment_details=payment_details
                 )
@@ -363,6 +373,104 @@ class StripeWebhookView(View):
             return JsonResponse({'error': str(e)}, status=500)
 
         return JsonResponse({'status': 'success'}, status=200)
+    
+class WalletAppointmentBooking(APIView):
+    """
+    API view to create a Wallet checkout session for booking an appointment.
+    """
+    permission_classes = [IsAuthenticated,VerifiedUser]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            scheduling_uuid = request.data.get('scheduling_uuid')
+            scheduling_date_str = request.data.get('scheduling_date')
+            print(scheduling_date_str, scheduling_uuid)
+
+            user=request.user
+
+            if not scheduling_uuid or not scheduling_date_str:
+                print('Missing scheduling UUID or date')
+                return Response({'error': 'Scheduling UUID and date are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                scheduling_date = datetime.strptime(
+                    scheduling_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                print('invalid date format')
+                return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            scheduling = get_object_or_404(Scheduling, pk=scheduling_uuid)
+
+            
+            if not scheduling.is_listed or scheduling.is_canceled:
+                print('session is not available now')
+                return Response({'error': 'Session is not available now.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                with transaction.atomic():
+                    scheduling_date = datetime.strptime(scheduling_date_str, '%Y-%m-%d').date()
+                    # lawyer_obj = scheduling.lawyer_profile.user
+                    uuid_for_payment=uuid.uuid4()
+
+                    payment_details = PaymentDetails.objects.create(
+                        payment_method='wallet',
+                        transaction_id=uuid_for_payment,
+                        payment_for='session'
+                    )
+
+                    latest_transaction = WalletTransactions.objects.filter(
+                        user=user).order_by('-created_at').first()
+                    
+                    latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
+
+                    price = Decimal(scheduling.price) 
+                    latest_wallet_balance -= price
+
+                    WalletTransactions.objects.create(
+                        wallet_balance=latest_wallet_balance,
+                        amount=price,
+                        transaction_type='debit',
+                        user=user,
+                        payment_details=payment_details
+                    )
+                    
+                    
+
+                    appointment_obj=BookedAppointment.objects.create(
+                        scheduling=scheduling,
+                        user_profile=user,
+                        session_start=datetime.combine(scheduling_date, scheduling.start_time),
+                        session_end=datetime.combine(scheduling_date, scheduling.end_time),
+                        payment_details=payment_details,
+                    )
+                    session_start_time = timezone.make_aware(datetime.combine(scheduling_date, scheduling.start_time))
+                    print(session_start_time)
+                    Notifications.objects.create(user_id=scheduling.lawyer_profile.user.pk,title='User booked an appointment',description=f"session id:{appointment_obj.uuid} scheduled for time:{appointment_obj.session_start}",notify_time = timezone.now() + timedelta(seconds=15))
+                    Notifications.objects.create(user=user,title='Session will Starts Now',description=f"Appoinment id:{appointment_obj.uuid} session will starts now",notify_time = session_start_time )
+                    Notifications.objects.create(user_id=scheduling.lawyer_profile.user.pk,title='Session will Starts Now',description=f"Appoinment id:{appointment_obj.uuid} session will starts now",notify_time = session_start_time)
+
+                    scheduling.is_listed = False
+                    scheduling.save()
+                    session_end_time = timezone.make_aware(appointment_obj.session_end)
+                    print((session_end_time- timedelta(minutes=5)),'this is the celery task scheduled time')
+                    celery_task_obj = send_money_to_the_lawyer_wallet.apply_async(
+                        args=[scheduling.lawyer_profile.user.pk, payment_details.pk, appointment_obj.pk], 
+                        eta=(session_end_time - timedelta(minutes=5))
+                    )
+                    CeleryTasks.objects.create(appointment = appointment_obj,task_id = celery_task_obj.id)
+                    return JsonResponse({'status': 'success','checkout_id':uuid_for_payment}, status=200)
+            except Scheduling.DoesNotExist:
+                print('Scheduling does not exist')
+                return JsonResponse({'error': 'Scheduling not found'}, status=400)
+            
+            except Exception as e:
+                print('Error occurred:', str(e))
+                return JsonResponse({'error': str(e)}, status=500)
+            
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     
 class BookedAppointmentsListView(generics.ListAPIView):
     serializer_class = BookedAppointmentSerializer
@@ -569,10 +677,13 @@ class CancelAppointmentView(APIView):
                 WalletTransactions.objects.create(
                     wallet_balance=latest_wallet_balance,
                     amount=Decimal(appointment.scheduling.price),
-                    transaction_type='debit',
+                    transaction_type='credit',
                     user=appointment.user_profile,
                     payment_details=appointment.payment_details
                 )
+                celery_task_obj = get_object_or_404(CeleryTasks,appointment=appointment)
+                if celery_task_obj:
+                    current_app.control.revoke(celery_task_obj.task_id, terminate=True)
 
             return Response({"message": "Appointment canceled successfully"}, status=status.HTTP_200_OK)
         except BookedAppointment.DoesNotExist:
@@ -580,7 +691,6 @@ class CancelAppointmentView(APIView):
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
-# View Details of the completed appointment
 class BookedAppointmentDetailsView(generics.RetrieveAPIView):
     queryset = BookedAppointment.objects.all()
     permission_classes = [ObjectBasedUsers]
@@ -588,3 +698,16 @@ class BookedAppointmentDetailsView(generics.RetrieveAPIView):
     lookup_field = 'uuid'
 
     
+
+class SchedulingDeleteAPIView(generics.DestroyAPIView):
+    queryset = Scheduling.objects.all()
+    serializer_class = SchedulingSerializer
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if instance.is_listed:
+            self.perform_destroy(instance)
+            return Response({"message": "Scheduling deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"error": "Cannot delete this scheduling because it is already booked one."}, status=status.HTTP_400_BAD_REQUEST)

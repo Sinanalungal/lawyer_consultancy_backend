@@ -13,24 +13,20 @@ class Scheduling(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     price = models.DecimalField(max_digits=6, decimal_places=2)
-    reference_until = models.DateField()
+    # reference_until = models.DateField()
     lawyer_profile = models.ForeignKey(LawyerProfile, on_delete=models.CASCADE)
     is_listed = models.BooleanField(default=True)
     is_canceled = models.BooleanField(default=False)
 
     def clean(self):
+        super().clean()
         if not self.date:
             raise ValidationError('Date must be provided.')
         
         if not self.start_time:
             raise ValidationError('Start time must be provided.')
         
-        # now = datetime.now().time()
-        # today = datetime.today().date()
-
-        # if self.date == today and self.start_time <= now:
-        #     raise ValidationError('Start time must be later than the current time for today.')
-
+        
         if self.end_time <= self.start_time:
             raise ValidationError('End time must be later than start time.')
 
@@ -41,9 +37,16 @@ class Scheduling(models.Model):
 
         if not (1 <= self.price <= 1000):
             raise ValidationError('Price must be between 1 and 1000.')
-
-        if self.reference_until < self.date:
-            raise ValidationError('Reference Until date must be on or after the start date.')
+        
+        if self.pk is None: 
+            conflicting_schedules = Scheduling.objects.filter(
+                lawyer_profile=self.lawyer_profile,
+                date=self.date,
+                start_time__lt=self.end_time,
+                end_time__gt=self.start_time
+            )
+            if conflicting_schedules.exists():
+                raise ValidationError("This time slot conflicts with an existing schedule.")
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -69,7 +72,6 @@ class BookedAppointment(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     scheduling = models.ForeignKey(Scheduling, on_delete=models.CASCADE)
     user_profile = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    # session_date = models.DateTimeField(default=None, null=True, blank=True)
     session_start = models.DateTimeField(default=None, null=True, blank=True)
     session_end = models.DateTimeField(default=None, null=True, blank=True)
     booked_at = models.DateTimeField(auto_now_add=True)
@@ -89,18 +91,15 @@ class BookedAppointment(models.Model):
 
         now = timezone.now()
 
-        # Parse session_date if it's a string
         if isinstance(self.session_start, str):
             try:
                 self.session_start = datetime.fromisoformat(self.session_start)
             except ValueError:
                 raise ValidationError('Invalid session date format.')
 
-        # Ensure the session_start is within the valid period
-        if not (self.scheduling.date <= now.date() <= self.scheduling.reference_until):
+        if not (self.scheduling.date < now.date()):
             raise ValidationError('Session date is not within the valid period.')
 
-        # Check if booking is for a future time
         if (self.session_start.date() == now.date() and self.session_start.time() <= now.time()):
             raise ValidationError('Cannot book an appointment for a past time.')
 
@@ -110,7 +109,6 @@ class BookedAppointment(models.Model):
         if self.session_start < timezone.now():
             raise ValidationError("Cannot cancel a past appointment.")
         
-        # Mark the appointment as canceled
         self.is_canceled = True
         scheduling_obj = self.scheduling
         scheduling_obj.is_listed =True
@@ -119,3 +117,10 @@ class BookedAppointment(models.Model):
         self.save()
     def __str__(self):
         return f'Booked Appointment for {self.user_profile} on {self.scheduling.date} at {self.scheduling.start_time}'
+    
+class CeleryTasks(models.Model):
+    appointment = models.ForeignKey(BookedAppointment,on_delete=models.CASCADE)
+    task_id = models.CharField(max_length=100)
+
+    def __str__(self) -> str:
+        return f"{self.task_id} - {self.appointment.uuid}"

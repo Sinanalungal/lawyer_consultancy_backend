@@ -36,10 +36,12 @@ class AddFundsView(APIView):
                 },
             ],
             mode='payment',
-            success_url=(settings.DOMAIN_URL + 'user/available-sessions/' + '?success={CHECKOUT_SESSION_ID}')
+            success_url=(settings.DOMAIN_URL + 'user/wallet/' + '?success={CHECKOUT_SESSION_ID}')
                         if request.user.role == 'user' else 
-                        (settings.DOMAIN_URL + 'other-path/' + '?success={CHECKOUT_SESSION_ID}'),
-            cancel_url=settings.DOMAIN_URL + 'cancel',
+                        (settings.DOMAIN_URL + 'lawyer/wallet/' + '?success={CHECKOUT_SESSION_ID}') if request.user.role == 'lawyer' else (settings.DOMAIN_URL + 'admin/wallet/' + '?success={CHECKOUT_SESSION_ID}') ,
+            cancel_url=(settings.DOMAIN_URL + 'user/wallet/' + '?cancel={CHECKOUT_SESSION_ID}')
+                        if request.user.role == 'user' else 
+                        (settings.DOMAIN_URL + 'lawyer/wallet/' + '?cancel={CHECKOUT_SESSION_ID}') if request.user.role == 'lawyer' else (settings.DOMAIN_URL + 'admin/wallet/' + '?cancel={CHECKOUT_SESSION_ID}'),
             metadata={
                 'user_id': request.user.id,
                 'payment_for': 'wallet',
@@ -58,7 +60,7 @@ class GetBalanceView(APIView):
             total_balance = latest_transaction.wallet_balance
         except WalletTransactions.DoesNotExist:
             total_balance = 0
-        balance_history = WalletTransactions.objects.filter(user=request.user).all()
+        balance_history = WalletTransactions.objects.filter(user=request.user).order_by('-created_at').all()
         balance_data = WalletTransactionsSerializer(balance_history, many=True).data
         return Response({"balance": total_balance, 'balance_history': balance_data}, status=status.HTTP_200_OK)
     

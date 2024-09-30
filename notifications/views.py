@@ -4,6 +4,7 @@ from rest_framework import generics
 from .models import Notifications
 from .serializer import NotificationSerializer
 from server.permissions import IsOwner
+from django.utils import timezone
 
 
 class NotificationListView(generics.ListAPIView):
@@ -12,4 +13,5 @@ class NotificationListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return Notifications.objects.filter(user=user).order_by('-notify_time')
+        print(timezone.now())
+        return Notifications.objects.filter(user=user,notify_time__lte=timezone.now()).order_by('-notify_time')

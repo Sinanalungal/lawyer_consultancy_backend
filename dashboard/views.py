@@ -53,12 +53,12 @@ class UserGrowthView(APIView):
         ).order_by('-completed_sessions')[:5]
 
         return Response({
-            "total_users": total_users,
+            "total_users": total_users-1,
             "total_lawyers": total_lawyers,
             "months": months,
             "user_growth": user_growth,
             "lawyer_growth": lawyer_growth,
-            "total_revenue": total_amount,
+            "total_revenue": total_amount if total_amount else 0,
             'total_completed_sessions': total_completed_sessions,
             'top_lawyers': top_lawyers,
         })
@@ -96,7 +96,7 @@ class LawyerDashboardView(APIView):
         )
 
         booked_sessions = (
-            BookedAppointment.objects.filter(scheduling__lawyer_profile=lawyer_profile)
+            BookedAppointment.objects.filter(Q(scheduling__lawyer_profile=lawyer_profile)&Q(is_completed = True))
             .filter(session_start__year=current_year)
             .annotate(month=ExtractMonth('session_start'))
             .values('month')
@@ -123,7 +123,7 @@ class LawyerDashboardView(APIView):
 
         return Response({
             "total_completed_cases": lawyer_cases_count,
-            "total_revenue": total_amount,
+            "total_revenue": total_amount if total_amount else 0,
             'total_completed_sessions': total_completed_sessions,
             'months': months,
             'sessions_count': sessions_count,

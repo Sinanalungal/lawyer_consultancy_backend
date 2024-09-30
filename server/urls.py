@@ -43,6 +43,7 @@ urlpatterns = [
     path('wallet/', include('wallet.urls')),
     path('dashboard/', include('dashboard.urls')),
     path('notification/', include('notifications.urls')),
+    path('calling/', include('call.urls')),
     # path("graphql/", GraphQLView.as_view(graphiql=True)),
 
 ]

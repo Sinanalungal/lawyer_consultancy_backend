@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 class SchedulingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scheduling
-        fields = ['date', 'start_time', 'end_time', 'price', 'reference_until']
+        fields = ['date', 'start_time', 'end_time', 'price']
 
     def validate(self, data):
         now = datetime.now().time()
@@ -25,9 +25,9 @@ class SchedulingSerializer(serializers.ModelSerializer):
 
         if not (1 <= data['price'] <= 1000):
             raise serializers.ValidationError("Price must be between 1 and 1000.")
-
-        if data['reference_until'] < data['date']:
-            raise serializers.ValidationError("Reference Until date must be on or after the start date.")
+    
+        # if data['reference_until'] < data['date']:
+        #     raise serializers.ValidationError("Reference Until date must be on or after the start date.")
 
         return data
 
