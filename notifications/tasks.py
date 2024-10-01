@@ -8,6 +8,8 @@ import json
 from decimal import Decimal
 import logging
 from django.db import transaction
+from datetime import datetime
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,25 @@ def send_notification_task(self, notification_id):
                 'notification': json.dumps(notification_data),
             }
         )
+        try:
+            naive_datetime = datetime.now() 
+            aware_datetime = timezone.make_aware(naive_datetime, timezone.get_current_timezone())
+            print(aware_datetime,'notification sending time')
+            print(notification.user)
+            unread_notification = Notifications.objects.filter(user=notification.user,notify_time__lte=aware_datetime, is_readed = False)
+            print(unread_notification,'these are teh notifications that is not readed')
+            print('this is the notifications',unread_notification)
+            print('this is the notification count',unread_notification.count())
+            async_to_sync(channel_layer.group_send)(
+                f'notifications_count_{notification.user.pk}',
+                {
+                    'type': 'send_notification_count',
+                    'notification_count':unread_notification.count(),
+                }
+            )
+        except :
+            print('error in sending notification count')
+
 
         print(f"Sent notification: {notification.title} to {notification.user.username}")
         return notification_data

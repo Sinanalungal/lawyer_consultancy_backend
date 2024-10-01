@@ -49,7 +49,6 @@ INSTALLED_APPS = [
     'blog',
     'subscription',
     'chat',
-    'call',
     'case',
     'schedule',
     'userside',
