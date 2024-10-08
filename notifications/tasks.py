@@ -74,7 +74,7 @@ def send_notification_task(self, notification_id):
     except Notifications.DoesNotExist:
         print(f"Notification with ID {notification_id} does not exist.")
     except Exception as e:
-        print(f"Error in send_notification_task: {str(e)}")  # Log any other errors
+        print(f"Error in send_notification_task: {str(e)}") 
 
 
 @shared_task(bind=True)
