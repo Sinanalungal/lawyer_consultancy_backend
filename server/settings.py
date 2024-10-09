@@ -31,8 +31,6 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
-# Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -42,12 +40,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    # "graphene_django",  
     'api',
     'channels',
     'adminside',
     'blog',
-    'subscription',
     'chat',
     'case',
     'schedule',
@@ -100,7 +96,7 @@ TEMPLATES = [
 ASGI_APPLICATION = 'server.asgi.application'
 
 
-AUTH_USER_MODEL ='api.CustomUser'
+AUTH_USER_MODEL = 'api.CustomUser'
 
 # settings.py
 TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID')
@@ -115,8 +111,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DATABASE_NAME'),
-        'USER':config('DATABASE_USER'),
-        'PASSWORD':config('DATABASE_PASSWORD'),
+        'USER': config('DATABASE_USER'),
+        'PASSWORD': config('DATABASE_PASSWORD'),
         'HOST': config('DATABASE_HOST'),
         'PORT': '5432'
     }
@@ -141,7 +137,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -155,28 +150,20 @@ REST_FRAMEWORK = {
 }
 
 
-
-
-
-
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://localhost:6379/1', 
+        'LOCATION': 'redis://localhost:6379/1',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
     }
 }
 
-# SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-# SESSION_CACHE_ALIAS = 'default'
-
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-    # 'REFRESH_TOKEN_LIFETIME': timedelta(minutes=2),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True
 }
@@ -185,9 +172,7 @@ SIMPLE_JWT = {
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE =  'Asia/Kolkata'
-
-# TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 
@@ -199,7 +184,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('localhost', 6379)], 
+            'hosts': [('localhost', 6379)],
         },
     },
 }
@@ -211,16 +196,17 @@ CHANNEL_LAYERS = {
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-MEDIA_URL='/media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
+# SMTP CONFIGURATION
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587 
+EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER =config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD =config("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
@@ -231,23 +217,22 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-DEFAULT_FROM_EMAIL =config("DEFAULT_FROM_EMAIL")
+# STRIPE CREDENTIALS
+STRIPE_API_KEY = config("STRIPE_API_KEY")
+STRIPE_ENDPOINT_SECRET = config("END_POINT_SECRET")
 
-STRIPE_API_KEY =  config("STRIPE_API_KEY")
-DOMAIN_URL=config("DOMAIN_URL")
+# DOMAIN URL
+DOMAIN_URL = config("DOMAIN_URL")
 
-#CELERY SETTINGS
 
 # CELERY SETTINGS
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Correct: Sets Redis as the message broker
-CELERY_ACCEPT_CONTENT = ['application/json']  # Correct: Specifies accepted content types
-CELERY_RESULT_SERIALIZER = 'json'  # Correct: Sets the result serializer to JSON
-CELERY_TASK_SERIALIZER = 'json'  # Correct: Sets the task serializer to JSON
-CELERY_TIMEZONE = 'Asia/Kolkata'  # Correct: Sets the timezone for the application
-
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'  # Correct: Stores results in the Django database
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
 
 # CELERY BEAT
-
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'  # Correct: Uses the database scheduler for periodic tasks
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

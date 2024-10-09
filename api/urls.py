@@ -1,6 +1,12 @@
-# urls.py
 from django.urls import path
-from .views import UserRegistrationAPIView, PasswordChangeView, DepartmentLanguageStateView, UserProfileImageUpdateView, UserListAPIView, UpdateLawyerVerificationAPIView, LawyerListAPIView, UpdateUserVerificationAPIView, LawyerFilter, DepartmentView, LawyerDetails, PasswordUpdate, ResetLinkValidationCheck, OtpVerificationView, ResendOtp, UserDetailView, UserUpdateView, ResetPasswordView, OtpSendGoogleAuthView, LoginWithGoogleView, ForgetPasswordView, SaveDataRequestView
+from .views import (
+    UserRegistrationAPIView, PasswordChangeView, DepartmentLanguageStateView,
+    UserProfileImageUpdateView, UserListAPIView, UpdateLawyerVerificationAPIView,
+    LawyerListAPIView, UpdateUserVerificationAPIView, DepartmentView,
+    LawyerDetails, PasswordUpdate, ResetLinkValidationCheck, OtpVerificationView,
+    ResendOtp, UserDetailView, UserUpdateView, ResetPasswordView, OtpSendGoogleAuthView,
+    LoginWithGoogleView, ForgetPasswordView, SaveDataRequestView
+)
 
 urlpatterns = [
     path('register/', UserRegistrationAPIView.as_view()),
@@ -17,17 +23,15 @@ urlpatterns = [
     path('update_password/', PasswordUpdate.as_view(), name='user-update'),
     path('lawyer-list/', LawyerDetails.as_view(), name='lawyer-details'),
     path('departments/', DepartmentView.as_view(), name='departments'),
-    path('user/profile-image/', UserProfileImageUpdateView.as_view(),
-         name='update_profile_image'),
+    path('user/profile-image/', UserProfileImageUpdateView.as_view(), name='update_profile_image'),
     path('change-password/', PasswordChangeView.as_view(), name='change-password'),
+
     # ------------------------ADMINS-------------------------------------
-    # path('filter-lawyer/', LawyerFilter.as_view(), name='filter-lawyer'),
     path('filter-user/', UserListAPIView.as_view(), name='filter-user'),
     path('users/update_verification/', UpdateUserVerificationAPIView.as_view(),
          name='update-user-verification'),
     path('filter-lawyer/', LawyerListAPIView.as_view(), name='filter-lawyer'),
     path('lawyer/update_verification/', UpdateLawyerVerificationAPIView.as_view(),
          name='update-lawyer-verification'),
-    path('departments-languages/', DepartmentLanguageStateView.as_view(),
-         name='departments-languages'),
+    path('departments-languages/', DepartmentLanguageStateView.as_view(), name='departments-languages'),
 ]

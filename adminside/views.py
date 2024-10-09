@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
-from server.permissions import IsAdmin,VerifiedUser
+from server.permissions import IsAdmin, VerifiedUser
 from api.models import CustomUser, Department, Language
 from .serializer import LawyerRegistrationSerializer, LawyerProfileSerializer
 from rest_framework.views import APIView
@@ -13,8 +13,6 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-
-
 class AddLawyerView(APIView):
     """
     API view to handle the addition of a lawyer.
@@ -23,7 +21,7 @@ class AddLawyerView(APIView):
     and their associated LawyerProfile, including departments, languages,
     and other related data.
     """
-    permission_classes = [IsAdmin,VerifiedUser]
+    permission_classes = [IsAdmin, VerifiedUser]
 
     def post(self, request):
         try:

@@ -9,18 +9,16 @@ from django.utils.crypto import get_random_string
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
-from django.db import transaction
 from schedule.models import BookedAppointment
 from wallet.models import WalletTransactions
 from django.shortcuts import get_object_or_404
-
 
 
 # Third-party imports
 from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny,IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
@@ -30,14 +28,12 @@ from django_redis import get_redis_connection
 from twilio.rest import Client
 
 # Local application imports
-from .models import CustomUser, PasswordResetToken, Department,Language,States
-from server.permissions import IsAdmin, IsLawyer, IsAdminOrLawyer,VerifiedUser
-from .serializers import UserRegistrationSerializer, LawyerFilterSerializer,StatesSerializer,LanguageSerializer,PasswordChangeSerializer, DepartmentSerializer, LawyerSerializer,UserUpdateSerializer, UserDetailSerializer,UserDetailForAdminSerializer
+from .models import CustomUser, PasswordResetToken, Department, Language, States
+from server.permissions import IsAdmin, IsLawyer, IsAdminOrLawyer, VerifiedUser
+from .serializers import UserRegistrationSerializer, LawyerFilterSerializer, StatesSerializer, LanguageSerializer, PasswordChangeSerializer, DepartmentSerializer, LawyerSerializer, UserUpdateSerializer, UserDetailSerializer, UserDetailForAdminSerializer
 from .sms_utils import generate_otp
-from .utils import  get_id_token_with_code_method_2
+from .utils import get_id_token_with_code_method_2
 from server.constants import url
-
-
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -53,7 +49,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         Returns:
             dict: The JWT token with additional user details.
-        
+
         Raises:
             PermissionDenied: If the user's account is not verified.
         """
@@ -88,7 +84,7 @@ class LoginWithGoogleView(APIView):
     Methods:
         post: Handle POST request for Google authentication.
     """
-    permission_classes = [AllowAny]  # Allow unrestricted access
+    permission_classes = [AllowAny]
 
     def authenticate_or_create_user(self, email, name, password):
         """
@@ -108,7 +104,8 @@ class LoginWithGoogleView(APIView):
             if user.phone_number is None:
                 status = 'new'
         except CustomUser.DoesNotExist:
-            user = CustomUser.objects.create_user(username=email, email=email, full_name=name)
+            user = CustomUser.objects.create_user(
+                username=email, email=email, full_name=name)
             user.set_password(password[:10])
             user.save()
             status = 'new'
@@ -124,7 +121,7 @@ class LoginWithGoogleView(APIView):
 
         Returns:
             dict: Contains the JWT access and refresh tokens with additional user details.
-        
+
         Raises:
             PermissionDenied: If the user's account is not verified.
         """
@@ -162,7 +159,8 @@ class LoginWithGoogleView(APIView):
             code = request.data.get('code')
             id_token = get_id_token_with_code_method_2(code)
             user_email = id_token.get('email')
-            user = self.authenticate_or_create_user(user_email, id_token.get('name'), id_token.get('at_hash'))
+            user = self.authenticate_or_create_user(
+                user_email, id_token.get('name'), id_token.get('at_hash'))
             token = self.get_jwt_token(user['user'])
             registering = user['status'] == 'new'
 
@@ -174,9 +172,6 @@ class LoginWithGoogleView(APIView):
             return Response({
                 'message': 'Something wrong with Google authentication'
             }, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 
 
 class UserRegistrationAPIView(APIView):
@@ -216,7 +211,8 @@ class UserRegistrationAPIView(APIView):
                 redis_conn.setex(expiration_key, 3600, expiration_seconds)
 
                 # Send OTP via message
-                obj = MessageHandler(serializer.validated_data['phone_number'], otp_code)
+                obj = MessageHandler(
+                    serializer.validated_data['phone_number'], otp_code)
                 obj.send_otp_via_message()
 
                 return Response({
@@ -321,7 +317,6 @@ class ResendOtp(APIView):
             return Response({"message": "Please register once again"}, status=status.HTTP_408_REQUEST_TIMEOUT)
 
 
-
 class MessageHandler:
     """Handles sending OTP messages."""
 
@@ -331,7 +326,8 @@ class MessageHandler:
 
     def send_otp_via_message(self):
         """Send OTP via SMS."""
-        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        client = Client(settings.TWILIO_ACCOUNT_SID,
+                        settings.TWILIO_AUTH_TOKEN)
         message = client.messages.create(
             body=(
                 f'Your One Time OTP For Connect Registrations is: {self.otp}. '
@@ -386,7 +382,6 @@ class ForgetPasswordView(APIView):
 class ResetLinkValidationCheck(APIView):
     """Handles validation of the password reset link."""
 
-
     def post(self, request, *args, **kwargs):
         """
         Handle POST request for validating the reset link.
@@ -423,7 +418,6 @@ class ResetLinkValidationCheck(APIView):
 
 class ResetPasswordView(APIView):
     """Handles password reset functionality."""
-
 
     def post(self, request, *args, **kwargs):
         """
@@ -475,7 +469,6 @@ class ResetPasswordView(APIView):
 class SaveDataRequestView(APIView):
     """Handles saving user data."""
 
-
     def post(self, request, *args, **kwargs):
         """
         Handle POST request for saving user data.
@@ -524,7 +517,6 @@ class SaveDataRequestView(APIView):
             )
 
 
-
 class OtpSendGoogleAuthView(APIView):
     """Handles resending OTP."""
 
@@ -559,26 +551,26 @@ class OtpSendGoogleAuthView(APIView):
                 status=status.HTTP_408_REQUEST_TIMEOUT
             )
 
-#----------needed-------------------
+
 class UserDetailView(generics.RetrieveAPIView):
     serializer_class = UserDetailSerializer
-    permission_classes = [IsAuthenticated,VerifiedUser]
+    permission_classes = [IsAuthenticated, VerifiedUser]
 
     def get_object(self):
         return self.request.user
-#------------------------------------
 
 
 class UserUpdateView(generics.UpdateAPIView):
 
     queryset = CustomUser.objects.all()
     serializer_class = UserUpdateSerializer
-    permission_classes=[IsAuthenticated,VerifiedUser]
+    permission_classes = [IsAuthenticated, VerifiedUser]
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
@@ -627,7 +619,7 @@ class PasswordUpdate(APIView):
 
 class LawyerDetails(APIView):
     """Handles fetching lawyer details."""
-    permission_classes=[IsAuthenticated,VerifiedUser]
+    permission_classes = [IsAuthenticated, VerifiedUser]
 
     def get(self, request, *args, **kwargs):
         try:
@@ -650,7 +642,7 @@ class LawyerDetails(APIView):
 
 class DepartmentView(APIView):
     """Handles fetching department details."""
-    permission_classes=[IsAuthenticated,VerifiedUser]
+    permission_classes = [IsAuthenticated, VerifiedUser]
 
     def get(self, request, *args, **kwargs):
         try:
@@ -666,8 +658,7 @@ class DepartmentView(APIView):
 
 class LawyerFilter(APIView):
     """Handles filtering of lawyers based on criteria."""
-    permission_classes=[IsAuthenticated,VerifiedUser]
-
+    permission_classes = [IsAuthenticated, VerifiedUser]
 
     def get(self, request, *args, **kwargs):
         try:
@@ -688,7 +679,8 @@ class LawyerFilter(APIView):
                 if experience == '<5':
                     lawyers = lawyers.filter(experience__lt=5)
                 elif experience == '5-10':
-                    lawyers = lawyers.filter(experience__gte=5, experience__lte=10)
+                    lawyers = lawyers.filter(
+                        experience__gte=5, experience__lte=10)
                 elif experience == '>10':
                     lawyers = lawyers.filter(experience__gt=10)
 
@@ -710,17 +702,13 @@ class LawyerFilter(APIView):
             )
 
 
-
-
-#---------------------- User and Lawyer LIsting ------------------
-
 class UserListAPIView(generics.ListAPIView):
 
     """
     API view to retrieve a paginated list of users.
     """
     serializer_class = UserDetailForAdminSerializer
-    permission_classes = [IsAdmin,VerifiedUser] 
+    permission_classes = [IsAdmin, VerifiedUser]
     pagination_class = PageNumberPagination
     page_size = 10
 
@@ -743,7 +731,7 @@ class UserListAPIView(generics.ListAPIView):
             )
 
         return queryset
-    
+
 
 class UpdateUserVerificationAPIView(generics.UpdateAPIView):
     """
@@ -751,46 +739,43 @@ class UpdateUserVerificationAPIView(generics.UpdateAPIView):
     """
     queryset = CustomUser.objects.filter(role='user').all()
     serializer_class = UserDetailForAdminSerializer
-    permission_classes = [IsAdmin,VerifiedUser]
+    permission_classes = [IsAdmin, VerifiedUser]
 
     def patch(self, request, *args, **kwargs):
         user_id = request.data.get('user_id')
         is_verified = request.data.get('is_verified')
-        
+
         if user_id is None or is_verified is None:
             return Response({'error': 'user_id and is_verified fields are required'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             user = CustomUser.objects.get(pk=user_id)
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         user.is_verified = is_verified
         user.save()
         serializer = self.get_serializer(user)
         return Response(serializer.data)
-    
+
+
 class LawyerListAPIView(generics.ListAPIView):
     """
     API view to retrieve a paginated list of users.
     """
     serializer_class = UserDetailForAdminSerializer
-    permission_classes = [IsAdmin,VerifiedUser] 
+    permission_classes = [IsAdmin, VerifiedUser]
     pagination_class = PageNumberPagination
     page_size = 10
 
     def get_queryset(self):
         queryset = CustomUser.objects.filter(role='lawyer').all()
 
-        # Filter based on is_verified status if provided
         is_verified = self.request.query_params.get('blocked')
         if is_verified is not None:
             is_verified = is_verified.lower() == 'true'
             queryset = queryset.filter(is_verified=not is_verified)
-                
 
-
-        # Filter based on search query if provided
         search_query = self.request.query_params.get('search')
         if search_query:
             queryset = queryset.filter(
@@ -801,53 +786,57 @@ class LawyerListAPIView(generics.ListAPIView):
 
         return queryset
 
+
 class UpdateLawyerVerificationAPIView(generics.UpdateAPIView):
     """
     API view to update user verification status.
     """
     queryset = CustomUser.objects.filter(role='lawyer').all()
     serializer_class = UserDetailForAdminSerializer
-    permission_classes = [IsAdmin,VerifiedUser]
+    permission_classes = [IsAdmin, VerifiedUser]
 
     def patch(self, request, *args, **kwargs):
         user_id = request.data.get('user_id')
         is_verified = request.data.get('is_verified')
-        
+
         if user_id is None or is_verified is None:
             return Response({'error': 'user_id and is_verified fields are required'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             user = CustomUser.objects.get(pk=user_id)
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         user.is_verified = is_verified
         user.save()
-        #-------------------newly added for the case of blocking (not checked) --------------------
         if not user.is_verified:
             for i in BookedAppointment.objects.filter(scheduling__lawyer_profile__user=user):
-                latest_transaction = WalletTransactions.objects.filter(user=i.user_profile).order_by('-timestamp').first()
+                latest_transaction = WalletTransactions.objects.filter(
+                    user=i.user_profile).order_by('-timestamp').first()
                 if latest_transaction.wallet_balance:
-                    WalletTransactions.objects.create(user=i.user_profile,payment_details=i.payment_details,wallet_balance=(latest_transaction.wallet_balance + i.scheduling.price) ,amount=i.scheduling.price,transaction_type='Debit')
+                    WalletTransactions.objects.create(user=i.user_profile, payment_details=i.payment_details, wallet_balance=(
+                        latest_transaction.wallet_balance + i.scheduling.price), amount=i.scheduling.price, transaction_type='Debit')
                 else:
-                    WalletTransactions.objects.create(user=i.user_profile,payment_details=i.payment_details,wallet_balance= i.scheduling.price ,amount=i.scheduling.price,transaction_type='Debit')
-                i.is_canceled =  True
+                    WalletTransactions.objects.create(user=i.user_profile, payment_details=i.payment_details,
+                                                      wallet_balance=i.scheduling.price, amount=i.scheduling.price, transaction_type='Debit')
+                i.is_canceled = True
                 i.save()
-        #-------------------------------------------------
         serializer = self.get_serializer(user)
         return Response(serializer.data)
-    
-#----------for updating users details-----------
+
 
 class UserProfileImageUpdateView(APIView):
-    
-    permission_classes = [IsAuthenticated,VerifiedUser]
+    """
+    user profile image updation
+
+    """
+    permission_classes = [IsAuthenticated, VerifiedUser]
     parser_classes = [MultiPartParser, FormParser]
 
     def patch(self, request, *args, **kwargs):
         user = request.user
         data = request.data.copy()
-        
+
         if 'profile_image' in data and data['profile_image'] in ['', 'null']:
             data['profile_image'] = None
 
@@ -857,10 +846,11 @@ class UserProfileImageUpdateView(APIView):
             serializer.save()
             response_data = serializer.data
             if 'profile_image' in response_data:
-                if response_data['profile_image'] :
-                    response_data['profile_image'] = request.build_absolute_uri(response_data['profile_image'])
+                if response_data['profile_image']:
+                    response_data['profile_image'] = request.build_absolute_uri(
+                        response_data['profile_image'])
                 else:
-                    response_data['profile_image'] = None  
+                    response_data['profile_image'] = None
             return Response(response_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -869,34 +859,40 @@ class UserProfileImageUpdateView(APIView):
         Implement this method to return any custom headers you want to include in the response.
         """
         return {}
-    
+
+
 class PasswordChangeView(APIView):
+    """
+    password changing api view
+    """
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request, *args, **kwargs):
-        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        serializer = PasswordChangeSerializer(
+            data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response({"detail": "Password updated successfully"}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-  
+
 
 class DepartmentLanguageStateView(APIView):
     """
     View to fetch departments, languages, and states.
     """
+
     def get(self, request, *args, **kwargs):
         departments = Department.objects.all()
         languages = Language.objects.all()
-        states = States.objects.all()  # Fetch states
-        
+        states = States.objects.all()  
+
         department_serializer = DepartmentSerializer(departments, many=True)
         language_serializer = LanguageSerializer(languages, many=True)
-        states_serializer = StatesSerializer(states, many=True)  # Serialize states
-        
+        states_serializer = StatesSerializer(
+            states, many=True) 
+
         return Response({
             'departments': department_serializer.data,
             'languages': language_serializer.data,
-            'states': states_serializer.data  # Include states in response
+            'states': states_serializer.data  
         })

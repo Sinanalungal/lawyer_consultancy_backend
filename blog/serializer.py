@@ -1,8 +1,6 @@
 from rest_framework import serializers
-from .models import Blog, Like, Comment,Saved,Report
-from .image_serializer import Base64ImageField
+from .models import Blog, Like, Comment, Saved, Report
 from api.models import CustomUser
-
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -20,8 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['profile_image', 'full_name' ,'role']
-        
+        fields = ['profile_image', 'full_name', 'role']
 
 
 class BlogSerializer(serializers.ModelSerializer):
@@ -39,13 +36,13 @@ class BlogSerializer(serializers.ModelSerializer):
     like_count = serializers.SerializerMethodField()
     saved_count = serializers.SerializerMethodField()
     report_count = serializers.SerializerMethodField()
-    user = UserSerializer(read_only=True)  
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Blog
         fields = '__all__'
         extra_kwargs = {
-            'user': {'required': False}  
+            'user': {'required': False}
         }
 
     def get_like_count(self, obj):
@@ -55,11 +52,11 @@ class BlogSerializer(serializers.ModelSerializer):
     def get_saved_count(self, obj):
         """Return the count of saves for the blog."""
         return Saved.objects.filter(blog=obj).count()
-    
+
     def get_report_count(self, obj):
         """Return the count of reports for the blog."""
         return Report.objects.filter(blog=obj).count()
-    
+
 
 class BlogUserSerializer(serializers.ModelSerializer):
     """
@@ -85,7 +82,7 @@ class BlogUserSerializer(serializers.ModelSerializer):
         model = Blog
         fields = '__all__'
         extra_kwargs = {
-            'user': {'required': False}  
+            'user': {'required': False}
         }
 
     def get_is_reported(self, obj):
@@ -93,7 +90,6 @@ class BlogUserSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return Report.objects.filter(blog=obj, user=request.user, report=True).exists()
         return False
-
 
     def get_like_count(self, obj):
         """Return the count of likes for the blog."""
@@ -116,17 +112,19 @@ class BlogUserSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return Saved.objects.filter(blog=obj, user=request.user, saved=True).exists()
         return False
-    
-    
+
+
 class BlogUpdateIsListedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Blog
         fields = ['status']
 
+
 class LikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Like
         fields = ['like']
+
 
 class UserCommentSerializer(serializers.ModelSerializer):
     profile_image_url = serializers.SerializerMethodField()
@@ -141,17 +139,21 @@ class UserCommentSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.profile_image.url)
         return None
 
+
 class CommentSerializer(serializers.ModelSerializer):
     user = UserCommentSerializer(read_only=True)
+
     class Meta:
         model = Comment
         fields = ['id', 'user', 'blog', 'content', 'created_at']
         read_only_fields = ['user', 'blog', 'created_at']
 
+
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
         fields = ['note']
+
 
 class SavedSerializer(serializers.ModelSerializer):
     class Meta:
@@ -166,18 +168,21 @@ class BlogSerializerForRetrieveAndUpdate(serializers.ModelSerializer):
 
     class Meta:
         model = Blog
-        fields = '__all__' 
-        read_only_fields = ['user', 'created_at'] 
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at']
 
 
 class SavedBlogSerializer(serializers.ModelSerializer):
     blog = BlogUserSerializer()
+
     class Meta:
         model = Saved
         fields = ['blog', 'saved', 'updated_at']
 
+
 class LikedBlogSerializer(serializers.ModelSerializer):
     blog = BlogUserSerializer()
+
     class Meta:
         model = Like
         fields = ['blog', 'like', 'updated_at']

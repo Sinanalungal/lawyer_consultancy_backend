@@ -1,4 +1,5 @@
-from rest_framework import serializers    
+from rest_framework import serializers
+
 
 class Base64ImageField(serializers.ImageField):
     """
@@ -31,7 +32,8 @@ class Base64ImageField(serializers.ImageField):
                 self.fail('invalid_image')
 
             # Generate file name:
-            file_name = str(uuid.uuid4())[:12] # 12 characters are more than enough.
+            # 12 characters are more than enough.
+            file_name = str(uuid.uuid4())[:12]
             # Get the file name extension:
             file_extension = self.get_file_extension(file_name, decoded_file)
 

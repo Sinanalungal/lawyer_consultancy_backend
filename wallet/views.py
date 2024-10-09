@@ -117,32 +117,26 @@ class WithdrawMoney(APIView):
             amount = request.data.get('amount')
             upi_id = request.data.get('upi_id')
 
-            # Check if amount is valid
             if not amount or Decimal(amount) <= 0:
                 return Response({"error": "Amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Fetch the latest wallet transaction
             latest_transaction = WalletTransactions.objects.filter(
                 user=request.user).order_by('-created_at').first()
             latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
 
-            # Ensure the user has sufficient balance
             if latest_wallet_balance < Decimal(amount):
                 return Response({"error": "Insufficient wallet balance."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Generate UUID for transaction
             uuid_for_payment = uuid.uuid4()
 
             try:
-                # Create payment details
                 payment_details = PaymentDetails.objects.create(
                     payment_method='upi',
                     transaction_id=str(uuid_for_payment),
                     payment_for='withdraw_to_wallet'
                 )
 
-                # Update wallet balance and record the transaction
-                WalletTransactions.objects.create(
+                wallet_transaction_obj = WalletTransactions.objects.create(
                     user=request.user,
                     wallet_balance=latest_wallet_balance - Decimal(amount),
                     amount=Decimal(amount),
@@ -150,9 +144,8 @@ class WithdrawMoney(APIView):
                     payment_details=payment_details
                 )
 
-                # Create a withdrawing request
                 WithdrawingRequests.objects.create(
-                    user=request.user, amount=Decimal(amount), upi_id=upi_id)
+                    user=request.user, payment_obj=wallet_transaction_obj, amount=Decimal(amount), upi_id=upi_id)
 
                 return Response({"message": "Withdrawal requested successfully."}, status=status.HTTP_200_OK)
 
@@ -169,3 +162,48 @@ class WithdrawingRequestsViewSet(viewsets.ModelViewSet):
         if status:
             return self.queryset.filter(status=status)
         return self.queryset
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        data = request.data
+
+        if "status" in data:
+            new_status = data['status']
+
+            if new_status == 'success':
+                self.handle_success_status(instance)
+
+            elif new_status == 'rejected':
+                self.handle_rejected_status(instance)
+
+            else:
+                return Response({"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "Status is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return super().partial_update(request, *args, **kwargs)
+
+    def handle_success_status(self, instance):
+        pass
+
+    def handle_rejected_status(self, instance):
+        latest_transaction = WalletTransactions.objects.filter(
+            user=instance.user).order_by('-created_at').first()
+        latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
+        WalletTransactions.objects.create(user=instance.user, payment_details=instance.payment_obj.payment_details, wallet_balance=(
+            latest_wallet_balance + instance.amount), amount=instance.amount, transaction_type='credit')
+
+
+class WalletBalanceView(APIView):
+    permission_classes = [IsAuthenticated, VerifiedUser]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            latest_transaction = WalletTransactions.objects.filter(
+                user=request.user).latest('created_at')
+            total_balance = latest_transaction.wallet_balance
+        except WalletTransactions.DoesNotExist:
+            total_balance = 0
+
+        return Response({"balance": total_balance}, status=status.HTTP_200_OK)

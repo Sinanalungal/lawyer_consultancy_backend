@@ -1,21 +1,24 @@
-from rest_framework import generics
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Case, SelectedCases,AllotedCases
-from .serializers import CaseSerializer, StateSerializer,AllotedCasesSerializerForAdmin,AllotedCasesSerializer, SelectedCasesSerializer
-from api.models import States, LawyerProfile
-from rest_framework.pagination import PageNumberPagination
-from django_filters.rest_framework import DjangoFilterBackend
-from .filters import CaseFilter
-from rest_framework.permissions import IsAuthenticated
-from server.permissions import IsLawyer
-from django.utils import timezone
-from django.db.models import Q
 from django.db import transaction
-from rest_framework.filters import SearchFilter
-from django.db.models import Count
-from django.db.models import OuterRef, Exists
+from django.db.models import Exists, OuterRef, Q
+from django.utils import timezone
 
+from rest_framework import generics, status
+from rest_framework.filters import SearchFilter
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from django_filters.rest_framework import DjangoFilterBackend
+
+from .filters import CaseFilter
+from .models import Case, SelectedCases, AllotedCases
+from .serializers import (
+    CaseSerializer,
+    StateSerializer,
+    AllotedCasesSerializer,
+    SelectedCasesSerializer
+)
+from api.models import States, LawyerProfile
 
 
 class CaseListCreateView(generics.ListCreateAPIView):
@@ -69,7 +72,7 @@ class CaseListCreateView(generics.ListCreateAPIView):
 
 
 class NoPagination(PageNumberPagination):
-    page_size = None 
+    page_size = None
 
 
 class StateListView(generics.ListAPIView):
@@ -91,7 +94,7 @@ class CaseListView(generics.ListAPIView):
     def get_queryset(self):
         lawyer = self.request.user
         obj = LawyerProfile.objects.filter(user=lawyer).first()
-        queryset = Case.objects.filter(Q(is_listed=True)&Q(status='Pending'))
+        queryset = Case.objects.filter(Q(is_listed=True) & Q(status='Pending'))
 
         selected_case_ids = SelectedCases.objects.filter(
             lawyer=obj).values_list('case_model_id', flat=True)
@@ -106,6 +109,7 @@ class CaseListView(generics.ListAPIView):
             queryset = queryset.filter(case_type__icontains=search_term)
 
         return queryset
+
 
 class UnlistCaseView(generics.UpdateAPIView):
     queryset = Case.objects.filter(is_listed=True).all()
@@ -124,7 +128,7 @@ class SelectedCasesView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        case_id=request.query_params.get("case_id")
+        case_id = request.query_params.get("case_id")
         print(case_id)
         if case_id:
             selected_cases = self.queryset.filter(case_model_id=case_id)
@@ -149,6 +153,7 @@ class SelectedCasesView(generics.GenericAPIView):
 
     def perform_create(self, serializer, lawyer):
         serializer.save(lawyer=lawyer)
+
 
 class CreateAllotedCaseView(generics.CreateAPIView):
     serializer_class = AllotedCasesSerializer
@@ -176,8 +181,7 @@ class CreateAllotedCaseView(generics.CreateAPIView):
         case_model.save()
 
         serializer = self.get_serializer(alloted_case)
-        return Response(serializer.data, status=status.HTTP_201_CREATED) 
-
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class UserAllotedCasesView(generics.ListAPIView):
@@ -187,7 +191,7 @@ class UserAllotedCasesView(generics.ListAPIView):
     def get_queryset(self):
         # Fetching only the cases related to the authenticated user
         query_set = AllotedCases.objects.filter(
-            Q(selected_case__lawyer__user=self.request.user) | 
+            Q(selected_case__lawyer__user=self.request.user) |
             Q(selected_case__case_model__user=self.request.user)
         )
 
@@ -200,14 +204,13 @@ class UserAllotedCasesView(generics.ListAPIView):
                 Q(selected_case__case_model__case_type__icontains=search_term)
                 # | Q(selected_case__lawyer__user__full_name__icontains=search_term)
             )
-        
+
         # Filter by status if provided
         if status:
             query_set = query_set.filter(status=status)
-        
+
         return query_set
 
-    
 
 class CaseFinished(generics.UpdateAPIView):
     queryset = AllotedCases.objects.filter(status='Ongoing').all()
@@ -226,9 +229,9 @@ class AllotedCasesListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['status']
     search_fields = [
-        'selected_case__case_model__case_type',      
-        'selected_case__case_model__user__email',     
-        'selected_case__lawyer__user__full_name'     
+        'selected_case__case_model__case_type',
+        'selected_case__case_model__user__email',
+        'selected_case__lawyer__user__full_name'
     ]
 
     def get_queryset(self):

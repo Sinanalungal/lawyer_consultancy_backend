@@ -1,12 +1,12 @@
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
-from .models import CustomUser,Department,LawyerProfile,Language,States
+from .models import CustomUser, Department, LawyerProfile, Language, States
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for user registration.
-    
+
     Fields:
     - password: write-only CharField
     """
@@ -14,7 +14,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['full_name', 'email', 'phone_number', 'password', 'role', 'is_verified']
+        fields = ['full_name', 'email', 'phone_number',
+                  'password', 'role', 'is_verified']
 
     def create(self, validated_data):
         """
@@ -36,8 +37,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             role=role,
         )
         return user
-    
-    
+
+
 # class UserDetailSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = CustomUser
@@ -51,50 +52,48 @@ class UserDetailSerializer(serializers.ModelSerializer):
             'profile_image': {'required': False},
         }
 
+
 class UserDetailForAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['pk','full_name', 'email', 'phone_number', 'profile_image', 'is_verified', 'created_at']
+        fields = ['pk', 'full_name', 'email', 'phone_number',
+                  'profile_image', 'is_verified', 'created_at']
+
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = '__all__'
 
+
 class UserUpdateSerializer(serializers.ModelSerializer):
-    # password = serializers.CharField(write_only=True)
     profile_image = serializers.ImageField(required=False)
 
     class Meta:
         model = CustomUser
         fields = ['full_name', 'email', 'phone_number', 'profile_image']
 
-    # def update(self, instance, validated_data):
-    # # Handle password separately to hash it before saving
-    #     if 'password' in validated_data and validated_data['password'] != '':
-    #         password = validated_data.pop('password')
-    #         if password and re.match(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$', password):
-    #             instance.set_password(password)  # Hash the password using Django's set_password method
 
-    #     return super().update(instance, validated_data)
-    
 class LawyerSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id','full_name', 'departments', 'experience', 'description', 'profile_image']
+        fields = ['id', 'full_name', 'departments',
+                  'experience', 'description', 'profile_image']
 
 
 class LawyerFilterSerializer(serializers.ModelSerializer):
     departments = DepartmentSerializer(many=True, read_only=True)
+
     class Meta:
         model = CustomUser
-        fields = ['id','full_name', 'departments', 'experience', 'description', 'profile_image']
+        fields = ['id', 'full_name', 'departments',
+                  'experience', 'description', 'profile_image']
 
 
 class OtpSerializer(serializers.Serializer):
     """
     Serializer for OTP validation.
-    
+
     Fields:
     - otp: IntegerField
 
@@ -125,21 +124,23 @@ class PasswordChangeSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
     confirm_new_password = serializers.CharField(write_only=True)
-    
+
     def validate(self, attrs):
         user = self.context['request'].user
         current_password = attrs.get('current_password')
         new_password = attrs.get('new_password')
         confirm_new_password = attrs.get('confirm_new_password')
-        
+
         if not user.check_password(current_password):
-            raise serializers.ValidationError({"current_password": "Current password is incorrect"})
-        
+            raise serializers.ValidationError(
+                {"current_password": "Current password is incorrect"})
+
         if new_password != confirm_new_password:
-            raise serializers.ValidationError({"confirm_new_password": "New passwords do not match"})
-        
+            raise serializers.ValidationError(
+                {"confirm_new_password": "New passwords do not match"})
+
         return attrs
-    
+
     def save(self):
         user = self.context['request'].user
         new_password = self.validated_data['new_password']
@@ -147,26 +148,17 @@ class PasswordChangeSerializer(serializers.Serializer):
         user.save()
 
 
-# class LawyerRegistrationSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = CustomUser
-#         fields = ['id', 'full_name','username', 'email', 'phone_number', 'role', 'profile_image']
-
-# class LawyerProfileSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = LawyerProfile
-#         fields = ['id', 'user', 'experience', 'description', 'departments', 'languages']
-#         read_only_fields = ['departments', 'languages']
-
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = ['id', 'department_name']
 
+
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language
         fields = ['id', 'name']
+
 
 class StatesSerializer(serializers.ModelSerializer):
     class Meta:

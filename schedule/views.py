@@ -108,21 +108,6 @@ class ActiveSchedulesView(generics.ListAPIView):
         return Scheduling.objects.filter(lawyer_profile__user__email=user, is_listed=True, is_canceled=False)
 
 
-# class CancelScheduleView(generics.UpdateAPIView):
-#     permission_classes = [IsLawyer,VerifiedUser]
-#     queryset = Scheduling.objects.all()
-#     lookup_field = 'uuid'
-
-#     def update(self, request, *args, **kwargs):
-#         schedule = self.get_object()
-#         if schedule.is_canceled:
-#             return Response({'detail': 'This schedule is already canceled.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         schedule.is_canceled = True
-#         schedule.save()
-#         return Response({'detail': 'Schedule canceled successfully.'}, status=status.HTTP_200_OK)
-
-
 class AvailableSlotsView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated, VerifiedUser]
 
@@ -264,7 +249,7 @@ class BookAppointmentView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class StripeWebhookView(View):
-    endpoint_secret = 'whsec_e883094ce98575db46ef700f91d94786f4b4cec88e05d6c7c3cc7c753e5543cd'
+    endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
 
     def post(self, request, *args, **kwargs):
         payload = request.body
@@ -302,20 +287,16 @@ class StripeWebhookView(View):
 
         try:
             with transaction.atomic():
-                # Fetch scheduling and related information
                 scheduling = Scheduling.objects.select_for_update().get(pk=scheduling_uuid)
                 scheduling_date = datetime.strptime(
                     scheduling_date_str, '%Y-%m-%d').date()
-                # lawyer_obj = scheduling.lawyer_profile.user
 
-                # Create payment details
                 payment_details = PaymentDetails.objects.create(
                     payment_method=session['payment_method_types'][0],
                     transaction_id=session['payment_intent'],
                     payment_for='session'
                 )
 
-                # Create the booked appointment
                 appointment_obj = BookedAppointment.objects.create(
                     scheduling=scheduling,
                     user_profile_id=user_id,
@@ -370,20 +351,16 @@ class StripeWebhookView(View):
 
         try:
             with transaction.atomic():
-                # Fetch scheduling and related information
                 scheduling = Scheduling.objects.select_for_update().get(pk=scheduling_uuid)
                 scheduling_date = datetime.strptime(
                     scheduling_date_str, '%Y-%m-%d').date()
-                # lawyer_obj = scheduling.lawyer_profile.user
 
-                # Create payment details
                 payment_details = PaymentDetails.objects.create(
                     payment_method=session['payment_method_types'][0],
                     transaction_id=session['payment_intent'],
                     payment_for='session'
                 )
 
-                # Create the booked appointment
                 appointment_obj = BookedAppointment.objects.create(
                     scheduling=scheduling,
                     user_profile_id=user_id,
@@ -401,7 +378,6 @@ class StripeWebhookView(View):
 
                 latest_wallet_balance = latest_transaction.wallet_balance if latest_transaction else 0
 
-                # price = Decimal(session['amount_subtotal']) / 100
                 if latest_wallet_balance != 0:
                     used_amount_from_wallet = Decimal(latest_wallet_balance)
 

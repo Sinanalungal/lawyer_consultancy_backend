@@ -7,10 +7,11 @@ class ThreadManager(models.Manager):
     def by_user(self, **kwargs):
         print(kwargs)
         user = kwargs.get('user')
-        lookup = (Q(first_person=user ) | Q(second_person=user)) &( Q(first_person__is_verified=True) & Q(second_person__is_verified=True))
+        lookup = (Q(first_person=user) | Q(second_person=user)) & (
+            Q(first_person__is_verified=True) & Q(second_person__is_verified=True))
         qs = self.get_queryset().filter(lookup).distinct()
         return qs
-    
+
     def involving_both_users(self, user1_id, user2_id):
         lookup = (
             (Q(first_person__id=user1_id) & Q(second_person__id=user2_id)) |
@@ -18,22 +19,21 @@ class ThreadManager(models.Manager):
         )
         return self.get_queryset().filter(lookup).distinct()
 
+
 class Thread(models.Model):
-    first_person = models.ForeignKey(CustomUser,on_delete=models.CASCADE,null=True,blank=True,related_name='thread_first_person')
-    second_person = models.ForeignKey(CustomUser,on_delete=models.CASCADE,null=True,blank=True,related_name='thread_second_person')
+    first_person = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='thread_first_person')
+    second_person = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='thread_second_person')
     updated = models.DateTimeField(auto_now=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_listed = models.BooleanField(default=True)
-    
+
     objects = ThreadManager()
+
     class Meta:
         unique_together = ['first_person', 'second_person']
 
-# class ChatMessage(models.Model):
-#     thread = models.ForeignKey(Thread,null=True,blank=True,on_delete=models.CASCADE,related_name='chatmessage_thread')
-#     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-#     message = models.TextField()
-#     timestamp = models.DateTimeField(auto_now_add=True)
 
 class ChatMessage(models.Model):
     CONTENT_TYPE_CHOICES = [
@@ -43,9 +43,11 @@ class ChatMessage(models.Model):
         ('image', 'Image'),
     ]
 
-    thread = models.ForeignKey('Thread', null=True, blank=True, on_delete=models.CASCADE, related_name='chatmessage_thread')
+    thread = models.ForeignKey('Thread', null=True, blank=True,
+                               on_delete=models.CASCADE, related_name='chatmessage_thread')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    content_type = models.CharField(max_length=10, choices=CONTENT_TYPE_CHOICES)
+    content_type = models.CharField(
+        max_length=10, choices=CONTENT_TYPE_CHOICES)
     message = models.TextField(blank=True, null=True)
     audio = models.FileField(upload_to='audio/', blank=True, null=True)
     video = models.FileField(upload_to='video/', blank=True, null=True)
@@ -54,4 +56,3 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"Message from {self.user} in thread {self.thread} at {self.timestamp}"
-

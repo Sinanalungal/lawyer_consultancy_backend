@@ -1,15 +1,16 @@
-from django.contrib.auth import get_user_model
-from channels.generic.websocket import AsyncWebsocketConsumer
-import json
-from channels.db import database_sync_to_async
-from api.models import CustomUser
-from .models import Thread, ChatMessage
-from datetime import datetime
 import base64
-from io import BytesIO
-from django.core.files.base import ContentFile
+import json
 import uuid
+from datetime import datetime
+
+from channels.db import database_sync_to_async
+from channels.generic.websocket import AsyncWebsocketConsumer
 from decouple import config
+from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+
+from api.models import CustomUser
+from .models import ChatMessage, Thread
 
 
 User = get_user_model()

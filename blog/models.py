@@ -22,13 +22,15 @@ class Blog(models.Model):
         ('Blocked', 'Blocked'),
     ]
 
-    user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, null=False,
+                             blank=False, on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
     image = models.ImageField(upload_to='blog/')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='Pending')
 
     def __str__(self):
         """Return the title of the blog post."""
@@ -45,8 +47,10 @@ class Like(models.Model):
         like (BooleanField): Indicates if the blog post is liked.
         updated_at (DateTimeField): The date and time when the like was updated.
     """
-    user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
-    blog = models.ForeignKey(Blog, null=False, blank=False, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, null=False,
+                             blank=False, on_delete=models.CASCADE)
+    blog = models.ForeignKey(
+        Blog, null=False, blank=False, on_delete=models.CASCADE)
     like = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -65,8 +69,10 @@ class Comment(models.Model):
         content (TextField): The content of the comment.
         created_at (DateTimeField): The date and time when the comment was created.
     """
-    user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
-    blog = models.ForeignKey(Blog, null=False, blank=False, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, null=False,
+                             blank=False, on_delete=models.CASCADE)
+    blog = models.ForeignKey(
+        Blog, null=False, blank=False, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -85,8 +91,10 @@ class Saved(models.Model):
         saved (BooleanField): Indicates if the blog post is saved.
         updated_at (DateTimeField): The date and time when the save was updated.
     """
-    user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
-    blog = models.ForeignKey(Blog, null=False, blank=False, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, null=False,
+                             blank=False, on_delete=models.CASCADE)
+    blog = models.ForeignKey(
+        Blog, null=False, blank=False, on_delete=models.CASCADE)
     saved = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -105,8 +113,10 @@ class Report(models.Model):
         note (TextField): The reason for reporting the blog post.
         report (BooleanField): Indicates if the blog post is reported.
     """
-    user = models.ForeignKey(CustomUser, null=False, blank=False, on_delete=models.CASCADE)
-    blog = models.ForeignKey(Blog, null=False, blank=False, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, null=False,
+                             blank=False, on_delete=models.CASCADE)
+    blog = models.ForeignKey(
+        Blog, null=False, blank=False, on_delete=models.CASCADE)
     note = models.TextField(blank=False, null=False)
     report = models.BooleanField(default=True)
 
@@ -116,5 +126,3 @@ class Report(models.Model):
     def __str__(self):
         """Return the primary key of the report."""
         return str(self.pk)
-
-

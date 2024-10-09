@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+
 class CustomUser(AbstractUser):
     """
     Custom user model extending AbstractUser.
@@ -19,15 +20,17 @@ class CustomUser(AbstractUser):
     )
     full_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=10, null=True, blank=True, unique=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
-    profile_image = models.ImageField(upload_to='profile/', blank=True, null=True)
+    phone_number = models.CharField(
+        max_length=10, null=True, blank=True, unique=True)
+    role = models.CharField(
+        max_length=20, choices=ROLE_CHOICES, default='user')
+    profile_image = models.ImageField(
+        upload_to='profile/', blank=True, null=True)
     is_verified = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
         return self.full_name
-
 
 
 class Department(models.Model):
@@ -38,6 +41,7 @@ class Department(models.Model):
 
     def __str__(self) -> str:
         return self.department_name
+
 
 class Language(models.Model):
     """
@@ -50,7 +54,6 @@ class Language(models.Model):
 
     def __str__(self) -> str:
         return self.name
-    
 
 
 class States(models.Model):
@@ -58,6 +61,7 @@ class States(models.Model):
     Model to store states.
     """
     name = models.CharField(max_length=100, blank=True, null=True)
+
 
 class LawyerProfile(models.Model):
     """
@@ -74,22 +78,21 @@ class LawyerProfile(models.Model):
     - state: CharField for state
     - postal_code: CharField for postal code
     """
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='lawyer_profile')
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name='lawyer_profile')
     departments = models.ManyToManyField(Department, blank=True)
     experience = models.PositiveIntegerField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     languages = models.ManyToManyField(Language, blank=True)
-    
+
     address = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     # state = models.ForeignKey(States,on_delete = models.CASCADE)
     state = models.CharField(max_length=100, blank=True, null=True)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
-    
 
     def __str__(self) -> str:
         return f"Profile for {self.user.email}"
-
 
 
 class PasswordResetToken(models.Model):
@@ -100,8 +103,5 @@ class PasswordResetToken(models.Model):
     token = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
 
-
-    def __str__(self) -> str :
+    def __str__(self) -> str:
         return f"Token for {self.user.email}"
-
-

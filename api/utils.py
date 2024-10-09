@@ -6,6 +6,7 @@ import jwt
 
 config = Config('.env')
 
+
 def get_id_token_with_code_method_1(code):
     """
     Get ID token using OAuth2Client library.
@@ -22,6 +23,7 @@ def get_id_token_with_code_method_1(code):
         code
     )
     return credentials.id_token
+
 
 def get_id_token_with_code_method_2(code):
     """
@@ -46,8 +48,8 @@ def get_id_token_with_code_method_2(code):
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     response = requests.post(token_endpoint, data=body, headers=headers)
-    
-    if response.ok:   
+
+    if response.ok:
         id_token = response.json()['id_token']
         return jwt.decode(id_token, options={"verify_signature": False})
     else:

@@ -28,14 +28,16 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('token/', jwt_views.TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/userdata/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', jwt_views.TokenObtainPairView.as_view(),
+         name='token_obtain_pair'),
+    path('token/userdata/', MyTokenObtainPairView.as_view(),
+         name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('api/', include('api.urls')),
     path('adminside/', include('adminside.urls')),
     path('blogsession/', include('blog.urls')),
-    path('subscriptions/', include('subscription.urls')),
+    # path('subscriptions/', include('subscription.urls')),
     path('chat/', include('chat.urls')),
     path('case-manage/', include('case.urls')),
     path('schedule/', include('schedule.urls')),
@@ -47,5 +49,7 @@ urlpatterns = [
 
 ]
 if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root = settings.STATIC_ROOT)
-    urlpatterns+= static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL,
+                          document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL,
+                          document_root=settings.MEDIA_ROOT)

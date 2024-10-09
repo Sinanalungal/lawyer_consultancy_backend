@@ -28,6 +28,8 @@ class WithdrawingRequests(models.Model):
     status = models.CharField(max_length=10, default='pending', choices=[(
         'pending', 'Pending'), ('success', 'Success'), ('rejected', 'Rejected')])
     upi_id = models.CharField(max_length=200, null=False, blank=False)
+    payment_obj = models.ForeignKey(
+        WalletTransactions, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

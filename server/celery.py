@@ -1,20 +1,20 @@
-from __future__ import absolute_import , unicode_literals
+from __future__ import absolute_import, unicode_literals
 import os
 
-from celery import Celery 
+from celery import Celery
 from django.conf import settings
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE','server.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'server.settings')
 
 app = Celery('server')
-app.conf.enable_utc =False
+app.conf.enable_utc = False
 # app.conf.broker_url = 'redis://localhost:6379'
-app.conf.update(timezone = 'Asia/Kolkata')
+app.conf.update(timezone='Asia/Kolkata')
 
-app.config_from_object(settings,namespace='CELERY')
+app.config_from_object(settings, namespace='CELERY')
 
 
-#CELERY BEAT SETTINGS
+# CELERY BEAT SETTINGS
 
 app.conf.beat_schedule = {
     # 'notify-in-every-5-seconds': {
@@ -28,6 +28,7 @@ app.conf.beat_schedule = {
 #         'args': (16, 16)
 #     }
 app.autodiscover_tasks()
+
 
 @app.task(bind=True)
 def debug_task(self, *args, **kewargs):

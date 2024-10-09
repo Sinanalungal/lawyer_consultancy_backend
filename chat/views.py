@@ -5,7 +5,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .models import Thread, ChatMessage
 from .serializers import ThreadSerializer, ChatMessageSerializer
-from rest_framework.pagination import PageNumberPagination
 from api.models import CustomUser
 from server.permissions import VerifiedUser
 
@@ -57,7 +56,7 @@ class ThreadMessagesPage(APIView):
             thread = Thread.objects.get(id=thread_id)
             if request.user not in [thread.first_person, thread.second_person]:
                 return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
-            
+
             messages = ChatMessage.objects.filter(
                 thread=thread).order_by('-timestamp')[::-1]
             serializer = ChatMessageSerializer(messages, many=True)
