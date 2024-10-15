@@ -13,11 +13,24 @@ from django.db.models.functions import ExtractMonth
 
 class UserGrowthView(APIView):
     """
-    API view to provide data for user growth chart.
+    API view to retrieve user growth statistics for the past 12 months.
+
+    Returns:
+        Response: JSON response with user and lawyer counts, monthly growth, revenue, completed sessions, and top lawyers.
     """
     permission_classes = [IsAdmin, VerifiedUser]
 
     def get(self, request, *args, **kwargs):
+        """
+        Handle GET request for user growth data.
+
+        Args:
+            request: The request object.
+
+        Returns:
+            Response: User growth statistics in JSON format.
+        """
+
         total_users = CustomUser.objects.count()
         total_lawyers = CustomUser.objects.filter(role='lawyer').count()
         non_canceled_appointments = BookedAppointment.objects.filter(
@@ -69,11 +82,23 @@ class UserGrowthView(APIView):
 
 class LawyerDashboardView(APIView):
     """
-    API view to provide data for user growth chart.
+    API view to provide lawyer-specific statistics and data.
+
+    Returns:
+        Response: JSON response with completed cases, revenue, sessions, and monthly statistics.
     """
     permission_classes = [IsLawyer, VerifiedUser]
 
     def get(self, request, *args, **kwargs):
+        """
+        Handle GET request for lawyer dashboard data.
+
+        Args:
+            request: The request object.
+
+        Returns:
+            Response: Lawyer-specific statistics in JSON format.
+        """
         try:
             non_canceled_appointments = BookedAppointment.objects.filter(
                 Q(is_canceled=False) & Q(is_completed=True) & Q(

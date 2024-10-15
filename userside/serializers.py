@@ -3,23 +3,27 @@ from api.models import LawyerProfile, Department, Language
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
+    """Serializer for the Department model."""
+
     class Meta:
         model = Department
         fields = ['department_name']
 
 
 class LanguageSerializer(serializers.ModelSerializer):
+    """Serializer for the Language model."""
+
     class Meta:
         model = Language
         fields = ['name']
 
 
 class LawyerProfileSerializer(serializers.ModelSerializer):
+    """Serializer for the LawyerProfile model, including related user information."""
+
     user_pk = serializers.CharField(source='user.pk')
     user_full_name = serializers.CharField(source='user.full_name')
     user_profile_image = serializers.ImageField(source='user.profile_image')
-    # user_email = serializers.EmailField(source='user.email')
-    # user_phone_number = serializers.CharField(source='user.phone_number')
     departments = DepartmentSerializer(many=True, read_only=True)
     languages = LanguageSerializer(many=True, read_only=True)
 
@@ -30,8 +34,6 @@ class LawyerProfileSerializer(serializers.ModelSerializer):
             'user_pk',
             'user_full_name',
             'user_profile_image',
-            # 'user_email',
-            # 'user_phone_number',
             'departments',
             'experience',
             'description',

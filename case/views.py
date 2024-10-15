@@ -22,9 +22,21 @@ from api.models import States, LawyerProfile
 
 
 class CaseListCreateView(generics.ListCreateAPIView):
+    """
+    View to list and create cases.
+
+    Allows authenticated users to retrieve their cases and create new ones.
+    Automatically marks outdated cases as 'Outdated'.
+    """
     serializer_class = CaseSerializer
 
     def get_queryset(self):
+        """
+        Retrieve the queryset of cases based on user authentication and selected filter.
+
+        Returns:
+            queryset: A queryset of cases filtered by user and selection status (all, selected, unselected).
+        """
         user = self.request.user
         selected_filter = self.request.query_params.get('selected', 'all')
 
@@ -61,37 +73,74 @@ class CaseListCreateView(generics.ListCreateAPIView):
         return Case.objects.none()
 
     def post(self, request, *args, **kwargs):
-        print(request.data)
+        """
+        Handle POST requests to create a new case.
+
+        Args:
+            request: The request object containing the case data.
+
+        Returns:
+            Response: A response containing the created case or an error message.
+        """
+        # print(request.data)
         return self.create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         """
         Save the case with the user set to the currently logged-in user.
+
+        Args:
+            serializer: The serializer instance for the case being created.
         """
         serializer.save(user=self.request.user)
 
 
 class NoPagination(PageNumberPagination):
+    """
+    Custom pagination class that disables pagination.
+    """
     page_size = None
 
 
 class StateListView(generics.ListAPIView):
+    """
+    View to list all states.
+
+    Returns all states without pagination.
+    """
     serializer_class = StateSerializer
     queryset = States.objects.all()
     pagination_class = NoPagination
 
 
 class CaseDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    View to retrieve, update, or delete a case.
+
+    Allows operations on a specific case identified by its ID.
+    """
     queryset = Case.objects.all()
     serializer_class = CaseSerializer
 
 
 class CaseListView(generics.ListAPIView):
+    """
+    View to list cases for lawyers.
+
+    Retrieves all listed and pending cases that are not selected by the lawyer.
+    Supports searching by case type.
+    """
     serializer_class = CaseSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = CaseFilter
 
     def get_queryset(self):
+        """
+        Retrieve the queryset of cases for the authenticated lawyer.
+
+        Returns:
+            queryset: A queryset of cases filtered by status, selection status, and search term.
+        """
         lawyer = self.request.user
         obj = LawyerProfile.objects.filter(user=lawyer).first()
         queryset = Case.objects.filter(Q(is_listed=True) & Q(status='Pending'))
@@ -112,10 +161,24 @@ class CaseListView(generics.ListAPIView):
 
 
 class UnlistCaseView(generics.UpdateAPIView):
+    """
+    View to unlist a case.
+
+    Allows the user to mark a case as unlisted.
+    """
     queryset = Case.objects.filter(is_listed=True).all()
     serializer_class = CaseSerializer
 
     def delete(self, request, *args, **kwargs):
+        """
+        Handle DELETE requests to unlist a case.
+
+        Args:
+            request: The request object.
+
+        Returns:
+            Response: A response indicating the result of the operation.
+        """
         case = self.get_object()
         case.is_listed = False
         case.save()
@@ -123,11 +186,25 @@ class UnlistCaseView(generics.UpdateAPIView):
 
 
 class SelectedCasesView(generics.GenericAPIView):
+    """
+    View to manage selected cases for lawyers.
+
+    Allows retrieval and creation of selected cases.
+    """
     queryset = SelectedCases.objects.all()
     serializer_class = SelectedCasesSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        """
+        Handle GET requests to retrieve selected cases for a specific case.
+
+        Args:
+            request: The request object.
+
+        Returns:
+            Response: A response containing the selected cases or an error message.
+        """
         case_id = request.query_params.get("case_id")
         print(case_id)
         if case_id:
@@ -137,6 +214,15 @@ class SelectedCasesView(generics.GenericAPIView):
         return Response({"detail": "Case ID not provided"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
+        """
+        Handle POST requests to create a selected case.
+
+        Args:
+            request: The request object containing selected case data.
+
+        Returns:
+            Response: A response containing the created selected case or an error message.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         lawyer = LawyerProfile.objects.filter(user=request.user).first()
@@ -152,15 +238,36 @@ class SelectedCasesView(generics.GenericAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer, lawyer):
+        """
+        Save the selected case with the associated lawyer.
+
+        Args:
+            serializer: The serializer instance for the selected case.
+            lawyer: The lawyer profile associated with the selected case.
+        """
         serializer.save(lawyer=lawyer)
 
 
 class CreateAllotedCaseView(generics.CreateAPIView):
+    """
+    View to create an allotted case.
+
+    Allows the assignment of selected cases to lawyers.
+    """
     serializer_class = AllotedCasesSerializer
     permission_classes = [IsAuthenticated]
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
+        """
+        Handle POST requests to create an allotted case.
+
+        Args:
+            request: The request object containing the allotted case data.
+
+        Returns:
+            Response: A response containing the created allotted case or an error message.
+        """
         selected_case_id = request.data.get('selected_case_id')
 
         try:
@@ -185,10 +292,21 @@ class CreateAllotedCaseView(generics.CreateAPIView):
 
 
 class UserAllotedCasesView(generics.ListAPIView):
+    """
+    View to list allotted cases for the authenticated user.
+
+    Retrieves all allotted cases related to the authenticated user, allowing filtering by search term and status.
+    """
     serializer_class = AllotedCasesSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Retrieve the queryset of allotted cases for the authenticated user.
+
+        Returns:
+            queryset: A queryset of allotted cases filtered by search term and status.
+        """
         # Fetching only the cases related to the authenticated user
         query_set = AllotedCases.objects.filter(
             Q(selected_case__lawyer__user=self.request.user) |
@@ -213,10 +331,24 @@ class UserAllotedCasesView(generics.ListAPIView):
 
 
 class CaseFinished(generics.UpdateAPIView):
+    """
+    View to mark an allotted case as completed.
+
+    This view allows the user to update the status of an ongoing case to 'Completed'.
+    """
     queryset = AllotedCases.objects.filter(status='Ongoing').all()
     # serializer_class = CaseSerializer
 
     def patch(self, request, *args, **kwargs):
+        """
+        Handle PATCH requests to mark a case as completed.
+
+        Args:
+            request: The request object containing the update data.
+
+        Returns:
+            Response: A response indicating the result of the operation.
+        """
         case = self.get_object()
         case.status = 'Completed'
         case.save()
@@ -224,6 +356,11 @@ class CaseFinished(generics.UpdateAPIView):
 
 
 class AllotedCasesListView(generics.ListAPIView):
+    """
+    View to list all allotted cases.
+
+    This view allows retrieval of all allotted cases, with optional filtering and searching capabilities.
+    """
     queryset = AllotedCases.objects.all()
     serializer_class = AllotedCasesSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
@@ -236,8 +373,13 @@ class AllotedCasesListView(generics.ListAPIView):
 
     def get_queryset(self):
         """
-        Optionally restricts the returned results by filtering against
-        the status passed in the query string.
+        Retrieve the queryset of allotted cases, optionally filtered by status.
+
+        If a status is provided in the query parameters, the queryset will be filtered
+        accordingly.
+
+        Returns:
+            queryset: A queryset of allotted cases, potentially filtered by status and ordered by creation date.
         """
         queryset = super().get_queryset()
         status = self.request.query_params.get('status')

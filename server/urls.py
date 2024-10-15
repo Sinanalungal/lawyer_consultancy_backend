@@ -37,7 +37,6 @@ urlpatterns = [
     path('api/', include('api.urls')),
     path('adminside/', include('adminside.urls')),
     path('blogsession/', include('blog.urls')),
-    # path('subscriptions/', include('subscription.urls')),
     path('chat/', include('chat.urls')),
     path('case-manage/', include('case.urls')),
     path('schedule/', include('schedule.urls')),
@@ -45,7 +44,6 @@ urlpatterns = [
     path('wallet/', include('wallet.urls')),
     path('dashboard/', include('dashboard.urls')),
     path('notification/', include('notifications.urls')),
-    # path("graphql/", GraphQLView.as_view(graphiql=True)),
 
 ]
 if settings.DEBUG:

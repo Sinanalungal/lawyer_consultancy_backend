@@ -34,7 +34,6 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter
 from decimal import Decimal
 from django.templatetags.static import static
-from django.urls import reverse
 import uuid
 from notifications.tasks import send_money_to_the_lawyer_wallet
 from django.shortcuts import get_object_or_404
@@ -45,11 +44,31 @@ stripe.api_key = settings.STRIPE_API_KEY
 
 
 class SchedulingCreateView(generics.CreateAPIView):
+    """
+    API view to create a new scheduling appointment.
+
+    This view allows a lawyer to create a new scheduling appointment.
+    It validates the input data and saves the appointment to the database
+    with the associated lawyer profile.
+
+    Permissions:
+        - Must be a lawyer
+        - User must be verified
+    """
     queryset = Scheduling.objects.all()
     serializer_class = SchedulingSerializer
     permission_classes = [IsLawyer, VerifiedUser]
 
     def perform_create(self, serializer):
+        """
+        Save the new scheduling appointment with the associated lawyer profile.
+
+        Args:
+            serializer (SchedulingSerializer): The serializer containing the data to save.
+
+        Raises:
+            ValidationError: If no LawyerProfile is associated with the current user.
+        """
         user_email = self.request.user.email
         print(user_email)
         try:
@@ -60,6 +79,17 @@ class SchedulingCreateView(generics.CreateAPIView):
         serializer.save(lawyer_profile=lawyer_profile)
 
     def create(self, request, *args, **kwargs):
+        """
+        Handle the creation of a new scheduling appointment.
+
+        Args:
+            request (Request): The HTTP request containing appointment data.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            Response: The response containing the created appointment data or error details.
+        """
         try:
             print(request.data)
             serializer = self.get_serializer(data=request.data)
@@ -76,22 +106,37 @@ class SchedulingCreateView(generics.CreateAPIView):
             except:
                 error_details = str(e)
 
-        # If there are non-field errors, extract them specifically
             if 'non_field_errors' in error_details:
                 return Response(
                     {"detail": error_details['non_field_errors']},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             return Response(error_details, status=status.HTTP_400_BAD_REQUEST)
-        # Otherwise, return the whole error object
 
 
 class UserSessionsView(generics.ListAPIView):
+    """
+    API view to list all scheduled appointments for a lawyer.
+
+    This view retrieves all future appointments for the authenticated lawyer
+    based on the current date and time.
+
+    Permissions:
+        - Must be a lawyer
+        - User must be verified
+    """
+
     serializer_class = ScheduledSerializer
     permission_classes = [IsLawyer, VerifiedUser]
     pagination_class = None
 
     def get_queryset(self):
+        """
+        Retrieve the queryset of scheduled appointments for the authenticated lawyer.
+
+        Returns:
+            QuerySet: A queryset containing the scheduled appointments.
+        """
         user = self.request.user
         date_time = timezone.now()
         date = date_time.date()
@@ -100,18 +145,54 @@ class UserSessionsView(generics.ListAPIView):
 
 
 class ActiveSchedulesView(generics.ListAPIView):
+    """
+    API view to list all active schedules for a lawyer.
+
+    This view retrieves all active (listed and not canceled) appointments
+    for the authenticated lawyer.
+
+    Permissions:
+        - Must be a lawyer
+        - User must be verified
+    """
+
     serializer_class = SheduledSerilizerForUserSide
     permission_classes = [IsLawyer, VerifiedUser]
 
     def get_queryset(self):
+        """
+        Retrieve the queryset of active schedules for the authenticated lawyer.
+
+        Returns:
+            QuerySet: A queryset containing the active schedules.
+        """
         user = self.request.user.email
         return Scheduling.objects.filter(lawyer_profile__user__email=user, is_listed=True, is_canceled=False)
 
 
 class AvailableSlotsView(generics.GenericAPIView):
+    """
+    API view to retrieve available time slots for a specific lawyer on a given date.
+
+    This view allows users to query for available time slots for scheduling an appointment
+    with a lawyer on a specified date.
+
+    Permissions:
+        - User must be authenticated
+        - User must be verified
+    """
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def get(self, request, *args, **kwargs):
+        """
+        Handle GET request to retrieve available time slots.
+
+        Args:
+            request (Request): The HTTP request containing query parameters for date and lawyer ID.
+
+        Returns:
+            Response: The response containing the available time slots or error details.
+        """
         date_str = request.query_params.get('date')
         lawyer_id = request.query_params.get('lawyer_id')
         print(f'date_str: {date_str}, lawyer_id: {lawyer_id}')
@@ -173,10 +254,27 @@ class AvailableSlotsView(generics.GenericAPIView):
 class BookAppointmentView(APIView):
     """
     API view to create a Stripe checkout session for booking an appointment.
+
+    This view handles the creation of a payment session for booking an appointment
+    with a lawyer. It validates the scheduling UUID and date before proceeding
+    with the Stripe payment process.
+
+    Permissions:
+        - User must be authenticated
+        - User must be verified
     """
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def post(self, request, *args, **kwargs):
+        """
+        Handle POST request to create a Stripe checkout session for an appointment.
+
+        Args:
+            request (Request): The HTTP request containing scheduling data.
+
+        Returns:
+            Response: The response containing the session ID or error details.
+        """
         try:
             scheduling_uuid = request.data.get('scheduling_uuid')
             scheduling_date_str = request.data.get('scheduling_date')
@@ -195,16 +293,9 @@ class BookAppointmentView(APIView):
 
             scheduling = get_object_or_404(Scheduling, pk=scheduling_uuid)
 
-            # session_date = datetime.combine(
-            #     scheduling_date, scheduling.start_time)
-
             if not scheduling.is_listed or scheduling.is_canceled:
                 print('session is not available now')
                 return Response({'error': 'Session is not available now.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # if BookedAppointment.objects.filter(scheduling=scheduling).exists():
-            #     print('session is not available now')
-            #     return Response({'error': 'Session is not available now.'}, status=status.HTTP_400_BAD_REQUEST)
 
             session_price = int(scheduling.price * 100)
             image_url = request.build_absolute_uri(
@@ -249,6 +340,13 @@ class BookAppointmentView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class StripeWebhookView(View):
+    """
+    Handles Stripe webhook events for payment processing.
+
+    Processes different types of payment events from Stripe, including 
+    session payments, wallet payments, and payments using both card and wallet.
+    """
+
     endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
 
     def post(self, request, *args, **kwargs):
@@ -463,7 +561,21 @@ class StripeWebhookView(View):
 class WalletAppointmentBooking(APIView):
     """
     API view to create a Wallet checkout session for booking an appointment.
+
+    This view handles the creation of a Stripe checkout session for booking an 
+    appointment using wallet balance or card payment. The request must include 
+    the scheduling UUID and scheduling date.
+
+    **Request body**:
+        - scheduling_uuid (str): The UUID of the scheduling.
+        - scheduling_date (str): The date for the appointment in YYYY-MM-DD format.
+
+    **Responses**:
+        - 202 Accepted: Checkout session created successfully.
+        - 400 Bad Request: If required fields are missing or invalid.
+        - 500 Internal Server Error: If an unexpected error occurs.
     """
+
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def post(self, request, *args, **kwargs):
@@ -616,6 +728,18 @@ class WalletAppointmentBooking(APIView):
 
 
 class BookedAppointmentsListView(generics.ListAPIView):
+    """
+    API view to list booked appointments for users and lawyers.
+
+    This view retrieves booked appointments based on the user role 
+    (lawyer or user) and query parameter type (upcoming, completed, or finished).
+
+    **Query Parameters**:
+        - type (str): Type of appointments to retrieve ('upcoming', 'completed', or 'finished').
+
+    **Responses**:
+        - 200 OK: Returns a list of booked appointments.
+    """
     serializer_class = BookedAppointmentSerializer
     permission_classes = [IsAuthenticated, VerifiedUser]
 
@@ -681,6 +805,19 @@ class BookedAppointmentsListView(generics.ListAPIView):
 
 
 class SchedulingListViewForAdmin(generics.ListAPIView):
+    """
+    API view to list scheduling details for admin users.
+
+    This view allows admins to list scheduling details and filter results 
+    based on cancellation status and search criteria.
+
+    **Query Parameters**:
+        - is_listed (bool): Filter to show listed or unlisted scheduling.
+        - search (str): Search term for lawyer names or scheduling details.
+
+    **Responses**:
+        - 200 OK: Returns a list of scheduling details.
+    """
     serializer_class = SchedulingSerializerForAdmin
     pagination_class = PageNumberPagination
     filter_backends = [SearchFilter]
@@ -699,6 +836,19 @@ class SchedulingListViewForAdmin(generics.ListAPIView):
 
 
 class SchedulingUpdateViewAdmin(generics.UpdateAPIView):
+    """
+    API view to update scheduling details by admin users.
+
+    This view allows admins to update the is_listed status of a scheduling.
+
+    **Request Body**:
+        - is_listed (bool): New listing status for the scheduling.
+
+    **Responses**:
+        - 200 OK: Returns updated scheduling details.
+        - 404 Not Found: If the scheduling does not exist.
+        - 400 Bad Request: If the request body is invalid.
+    """
     queryset = Scheduling.objects.all()
     serializer_class = SchedulingSerializerForAdmin
     permission_classes = [IsAdmin, VerifiedUser]
@@ -721,6 +871,20 @@ class SchedulingUpdateViewAdmin(generics.UpdateAPIView):
 
 
 class SuccessFullSessionReportView(generics.ListAPIView):
+    """
+    API view to generate a report of completed sessions.
+
+    This view retrieves successful session reports for admin users with 
+    optional filtering by date range and search term.
+
+    **Query Parameters**:
+        - from_date (str): Start date for the report (YYYY-MM-DD).
+        - to_date (str): End date for the report (YYYY-MM-DD).
+        - search (str): Search term for user or lawyer names.
+
+    **Responses**:
+        - 200 OK: Returns a list of successful sessions.
+    """
     serializer_class = BookedAppointmentSerializerForSalesReport
     permission_classes = [IsAdmin, VerifiedUser]
     filter_backends = [filters.SearchFilter]
@@ -760,6 +924,20 @@ class SuccessFullSessionReportView(generics.ListAPIView):
 
 
 class ForDownloadDataFetching(generics.ListAPIView):
+    """
+    API view for fetching completed appointments data for download.
+
+    This view retrieves completed appointments data for admin users, with 
+    options for filtering by date range and search term.
+
+    **Query Parameters**:
+        - from_date (str): Start date for the data (YYYY-MM-DD).
+        - to_date (str): End date for the data (YYYY-MM-DD).
+        - search (str): Search term for user or lawyer names.
+
+    **Responses**:
+        - 200 OK: Returns a list of completed appointments for download.
+    """
     serializer_class = BookedAppointmentSerializerForSalesReport
     permission_classes = [IsAdmin, VerifiedUser]
     filter_backends = [filters.SearchFilter]
@@ -799,8 +977,22 @@ class ForDownloadDataFetching(generics.ListAPIView):
         return qs.select_related('payment_details', 'scheduling__lawyer_profile__user', 'user_profile')
 
 
-# cancelling the booked session
 class CancelAppointmentView(APIView):
+    """
+    API view to cancel a booked appointment.
+
+    This view allows users to cancel a booked appointment by its UUID. 
+    When an appointment is canceled, the corresponding amount is credited 
+    back to the user's wallet.
+
+    **Request Parameters**:
+        - uuid (str): The UUID of the booked appointment to be canceled.
+
+    **Responses**:
+        - 200 OK: Appointment canceled successfully.
+        - 404 Not Found: If the appointment does not exist or the user is not authorized.
+        - 400 Bad Request: If there is a validation error during cancellation.
+    """
     permission_classes = [ObjectBasedUsers]
 
     def post(self, request, uuid):
@@ -838,6 +1030,19 @@ class CancelAppointmentView(APIView):
 
 
 class BookedAppointmentDetailsView(generics.RetrieveAPIView):
+    """
+    API view to retrieve details of a booked appointment.
+
+    This view returns the details of a specific booked appointment 
+    identified by its UUID.
+
+    **Request Parameters**:
+        - uuid (str): The UUID of the booked appointment.
+
+    **Responses**:
+        - 200 OK: Returns the details of the booked appointment.
+        - 404 Not Found: If the appointment does not exist.
+    """
     queryset = BookedAppointment.objects.all()
     permission_classes = [ObjectBasedUsers]
     serializer_class = BookedAppointmentSerializer
@@ -845,6 +1050,20 @@ class BookedAppointmentDetailsView(generics.RetrieveAPIView):
 
 
 class SchedulingDeleteAPIView(generics.DestroyAPIView):
+    """
+    API view to delete a scheduling.
+
+    This view allows the deletion of a scheduling if it is not currently 
+    booked. If the scheduling is already booked, deletion is not allowed.
+
+    **Request Parameters**:
+        - id (int): The ID of the scheduling to be deleted.
+
+    **Responses**:
+        - 204 No Content: Scheduling deleted successfully.
+        - 400 Bad Request: If the scheduling cannot be deleted because it is already booked.
+        - 404 Not Found: If the scheduling does not exist.
+    """
     queryset = Scheduling.objects.all()
     serializer_class = SchedulingSerializer
 

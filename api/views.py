@@ -553,6 +553,7 @@ class OtpSendGoogleAuthView(APIView):
 
 
 class UserDetailView(generics.RetrieveAPIView):
+    """ View for user detail information. """
     serializer_class = UserDetailSerializer
     permission_classes = [IsAuthenticated, VerifiedUser]
 
@@ -561,7 +562,7 @@ class UserDetailView(generics.RetrieveAPIView):
 
 
 class UserUpdateView(generics.UpdateAPIView):
-
+    """ view for updating user details """
     queryset = CustomUser.objects.all()
     serializer_class = UserUpdateSerializer
     permission_classes = [IsAuthenticated, VerifiedUser]
@@ -884,15 +885,15 @@ class DepartmentLanguageStateView(APIView):
     def get(self, request, *args, **kwargs):
         departments = Department.objects.all()
         languages = Language.objects.all()
-        states = States.objects.all()  
+        states = States.objects.all()
 
         department_serializer = DepartmentSerializer(departments, many=True)
         language_serializer = LanguageSerializer(languages, many=True)
         states_serializer = StatesSerializer(
-            states, many=True) 
+            states, many=True)
 
         return Response({
             'departments': department_serializer.data,
             'languages': language_serializer.data,
-            'states': states_serializer.data  
+            'states': states_serializer.data
         })

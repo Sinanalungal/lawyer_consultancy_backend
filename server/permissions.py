@@ -67,5 +67,8 @@ class ObjectBasedUsers(BasePermission):
 
 
 class SavedBlogAccess(BasePermission):
+    """
+    Custom permission to only allow the user they saved the blogs.
+    """
     def has_object_permission(self, request, view, obj):
         return obj.user == request.user

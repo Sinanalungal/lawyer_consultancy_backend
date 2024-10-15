@@ -12,21 +12,21 @@ from rest_framework.views import APIView
 
 from .models import Blog, Like, Comment, Saved, Report
 from .serializer import (
-    BlogSerializer, 
-    LikedBlogSerializer, 
-    SavedBlogSerializer, 
-    BlogSerializerForRetrieveAndUpdate, 
-    BlogUpdateIsListedSerializer, 
-    BlogUserSerializer, 
-    ReportSerializer, 
+    BlogSerializer,
+    LikedBlogSerializer,
+    SavedBlogSerializer,
+    BlogSerializerForRetrieveAndUpdate,
+    BlogUpdateIsListedSerializer,
+    BlogUserSerializer,
+    ReportSerializer,
     CommentSerializer
 )
 from api.models import CustomUser
 from server.permissions import (
-    IsAdmin, 
-    SavedBlogAccess, 
-    IsAdminOrLawyer, 
-    VerifiedUser, 
+    IsAdmin,
+    SavedBlogAccess,
+    IsAdminOrLawyer,
+    VerifiedUser,
     IsOwner
 )
 from notifications.models import Notifications
@@ -35,13 +35,16 @@ from notifications.models import Notifications
 class BlogCreateAPIView(generics.CreateAPIView):
     """
     API view to create a new blog post.
+
+    This view allows an admin or a verified lawyer to create a new blog post. 
+    It also sends notifications to all users about the new blog post.
     """
     serializer_class = BlogSerializer
     permission_classes = [IsAdminOrLawyer, VerifiedUser]
     parser_classes = (MultiPartParser, FormParser)
 
     def perform_create(self, serializer):
-        """Save the blog post with the user from the request."""
+        """Save the blog post with the user from the request and send notifications."""
         blog = serializer.save(user=self.request.user)
 
         user_pks = list(CustomUser.objects.values_list('id', flat=True))
@@ -59,6 +62,9 @@ class BlogCreateAPIView(generics.CreateAPIView):
 class BlogListAPIView(generics.ListAPIView):
     """
     API view to retrieve a paginated list of blog posts.
+
+    This view returns all blog posts, with optional filtering by status for admins 
+    and searching by title or content.
     """
     serializer_class = BlogSerializer
     permission_classes = [IsAdmin, VerifiedUser]
@@ -66,7 +72,7 @@ class BlogListAPIView(generics.ListAPIView):
     page_size = 10
 
     def get_queryset(self):
-        """Return the list of blogs."""
+        """Return the list of blogs based on optional filters."""
         queryset = Blog.objects.all()
 
         is_admin = self.request.user.role == 'admin'
@@ -89,7 +95,9 @@ class BlogListAPIView(generics.ListAPIView):
 
 class BlogUserListView(generics.ListAPIView):
     """
-    API view to retrieve a paginated list of blog posts.
+    API view to retrieve a paginated list of blog posts by verified users.
+
+    This view only returns blog posts that are listed and belong to verified users.
     """
     serializer_class = BlogUserSerializer
     permission_classes = [IsAuthenticated, VerifiedUser]
@@ -97,7 +105,7 @@ class BlogUserListView(generics.ListAPIView):
     page_size = 12
 
     def get_queryset(self):
-        """Return the list of blogs."""
+        """Return the list of listed blogs by verified users."""
         queryset = Blog.objects.filter(status='Listed', user__is_verified=True)
         search_query = self.request.query_params.get('search')
         if search_query:
@@ -116,10 +124,16 @@ class BlogUserListView(generics.ListAPIView):
 
 
 class LikeBlogView(generics.RetrieveUpdateAPIView):
+    """
+    API view to like or unlike a blog post.
+
+    This view allows authenticated users to toggle their like status on a blog post.
+    """
     queryset = Blog.objects.all()
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def update(self, request, *args, **kwargs):
+        """Toggle like status for the specified blog post."""
         blog_id = request.data.get('blog_id')
         if not blog_id:
             return Response({'detail': 'Blog ID is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -141,15 +155,27 @@ class LikeBlogView(generics.RetrieveUpdateAPIView):
 
 
 class CommentPagination(PageNumberPagination):
+    """
+    Pagination class for comments.
+
+    Sets the default page size for paginated comments.
+    """
     page_size = 10
 
 
 class CommentBlogView(generics.CreateAPIView):
+    """
+    API view to create a comment on a blog post.
+
+    This view allows authenticated users to comment on a blog post and retrieve 
+    the comments for a specific blog post.
+    """
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def perform_create(self, serializer):
+        """Save the comment with the user and blog post information."""
         blog_id = self.request.data.get('blog_id')
         if not blog_id:
             raise ValidationError({'error': 'Blog ID is required'})
@@ -162,6 +188,7 @@ class CommentBlogView(generics.CreateAPIView):
         serializer.save(user=self.request.user, blog=blog)
 
     def get(self, request, *args, **kwargs):
+        """Retrieve comments for a specific blog post."""
         blog_id = request.query_params.get('blog_id')
         if not blog_id:
             return Response({'error': 'Blog ID is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -176,11 +203,18 @@ class CommentBlogView(generics.CreateAPIView):
 
 
 class ReportBlogView(generics.CreateAPIView):
+    """
+    API view to report a blog post.
+
+    This view allows authenticated users to report a blog post if they have not 
+    already reported it.
+    """
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def perform_create(self, serializer):
+        """Save the report with the user and blog post information."""
         blog_id = self.kwargs.get('pk')
         user = self.request.user
         blog = Blog.objects.get(pk=blog_id)
@@ -195,10 +229,16 @@ class ReportBlogView(generics.CreateAPIView):
 
 
 class SaveBlogView(generics.RetrieveUpdateAPIView):
+    """
+    API view to save or unsave a blog post.
+
+    This view allows authenticated users to toggle the save status of a blog post.
+    """
     queryset = Blog.objects.all()
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def update(self, request, *args, **kwargs):
+        """Toggle save status for the specified blog post."""
         blog_id = request.data.get('blog_id')
         if not blog_id:
             return Response({'detail': 'Blog ID is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -220,11 +260,17 @@ class SaveBlogView(generics.RetrieveUpdateAPIView):
 
 
 class BlogUpdateIsListedView(generics.UpdateAPIView):
+    """
+    API view to update the listing status of a blog post.
+
+    This view allows admins to update the listing status of a blog post.
+    """
     queryset = Blog.objects.all()
     serializer_class = BlogUpdateIsListedSerializer
     permission_classes = [IsAdmin, VerifiedUser]
 
     def update(self, request, *args, **kwargs):
+        """Update the status of the specified blog post."""
         blog_id = request.data.get('blog_id')
         status_data = request.data.get('status')
         if not blog_id:
@@ -241,7 +287,7 @@ class BlogUpdateIsListedView(generics.UpdateAPIView):
 
 class CommentEditView(generics.RetrieveUpdateAPIView):
     """
-    API view to edit a comment.
+    API view to edit .
     """
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
@@ -321,6 +367,7 @@ class PersonalBlogListAPIView(generics.ListAPIView):
 
 
 class UserSavedBlogs(APIView):
+    """Api view to list the user saved blogs"""
     permission_classes = [SavedBlogAccess]
 
     def get(self, request):
@@ -333,6 +380,7 @@ class UserSavedBlogs(APIView):
 
 
 class UserLikedBlogs(APIView):
+    """Api view to list the user liked blogs"""
     permission_classes = [SavedBlogAccess]
 
     def get(self, request):

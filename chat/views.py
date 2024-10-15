@@ -10,9 +10,17 @@ from server.permissions import VerifiedUser
 
 
 class MessagesPage(APIView):
+    """
+    API view for managing chat threads.
+
+    Methods:
+        get: List chat threads for the user.
+        post: Start or retrieve a chat thread with a lawyer.
+    """
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def get(self, request, *args, **kwargs):
+        """List chat threads for the authenticated user."""
         threads = Thread.objects.by_user(
             user=request.user).filter(is_listed=True)
         serializer = ThreadSerializer(
@@ -20,6 +28,7 @@ class MessagesPage(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
+        """Start a chat thread with a lawyer or return an existing one."""
         lawyer_id = request.data.get('lawyer_id')
         if not lawyer_id:
             return Response({'detail': 'Lawyer ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -45,9 +54,16 @@ class MessagesPage(APIView):
 
 
 class ThreadMessagesPage(APIView):
+    """
+    API view for retrieving messages in a chat thread.
+
+    Methods:
+        post: Get messages for a specific thread.
+    """
     permission_classes = [IsAuthenticated, VerifiedUser]
 
     def post(self, request, *args, **kwargs):
+        """Get messages for a specific chat thread."""
         thread_id = request.data.get('thread_id')
         if not thread_id:
             return Response({'detail': 'Thread ID is required.'}, status=status.HTTP_400_BAD_REQUEST)

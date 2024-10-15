@@ -3,6 +3,7 @@ from api.models import CustomUser
 
 
 class Notifications(models.Model):
+    """model for notifications"""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=False, blank=False)
     title = models.CharField(max_length=100)
     description = models.TextField()

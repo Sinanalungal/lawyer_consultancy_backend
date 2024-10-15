@@ -31,8 +31,6 @@ class SchedulingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Price must be between 1 and 1000.")
 
-        # if data['reference_until'] < data['date']:
-        #     raise serializers.ValidationError("Reference Until date must be on or after the start date.")
 
         return data
 

@@ -17,16 +17,9 @@ app.config_from_object(settings, namespace='CELERY')
 # CELERY BEAT SETTINGS
 
 app.conf.beat_schedule = {
-    # 'notify-in-every-5-seconds': {
-    #     'task':'notifications.tasks.'
-    # }
+
 }
 
-# 'add-every-10-seconds': {
-#         'task': 'chat.tasks.add',
-#        'schedule': 10.0,
-#         'args': (16, 16)
-#     }
 app.autodiscover_tasks()
 
 

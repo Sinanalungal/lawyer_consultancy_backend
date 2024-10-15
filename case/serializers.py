@@ -4,24 +4,28 @@ from api.models import LawyerProfile, Department, Language, States, CustomUser
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
+    """ Serializer for Department """
     class Meta:
         model = Department
         fields = ['department_name']
 
 
 class LanguageSerializer(serializers.ModelSerializer):
+    """ Serializer for Language """
     class Meta:
         model = Language
         fields = ['name']
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """ Serializer for User """
     class Meta:
         model = CustomUser
         fields = ['id', 'full_name', 'profile_image']
 
 
 class LawyerProfileSerializer(serializers.ModelSerializer):
+    """ Serializer for Lawyer Profile """
     departments = DepartmentSerializer(many=True, read_only=True)
     languages = LanguageSerializer(many=True, read_only=True)
     user = UserSerializer(read_only=True)
@@ -33,12 +37,14 @@ class LawyerProfileSerializer(serializers.ModelSerializer):
 
 
 class StateSerializer(serializers.ModelSerializer):
+    """ Serializer for State """
     class Meta:
         model = States
         fields = ['id', 'name']
 
 
 class CaseSerializer(serializers.ModelSerializer):
+    """ Serializer for case instances """
     state_name = serializers.SerializerMethodField()
     state = serializers.PrimaryKeyRelatedField(queryset=States.objects.all())
     user_name = serializers.CharField(source='user.name', read_only=True)
@@ -58,6 +64,7 @@ class CaseSerializer(serializers.ModelSerializer):
 
 
 class SelectedCasesSerializer(serializers.ModelSerializer):
+    """ Serializer for selected cases """
     lawyer = LawyerProfileSerializer(read_only=True)
 
     class Meta:
@@ -67,6 +74,7 @@ class SelectedCasesSerializer(serializers.ModelSerializer):
 
 
 class SelectedCasesAllotedSerializer(serializers.ModelSerializer):
+    """ Serializer for Selected cases that alloted to the lawyer"""
     lawyer = LawyerProfileSerializer(read_only=True)
     case_model = CaseSerializer(read_only=True)
 
@@ -77,6 +85,7 @@ class SelectedCasesAllotedSerializer(serializers.ModelSerializer):
 
 
 class AllotedCasesSerializer(serializers.ModelSerializer):
+    """ Serializer for allotted cases to the lawyer"""
     selected_case = SelectedCasesAllotedSerializer(read_only=True)
 
     class Meta:
@@ -86,6 +95,7 @@ class AllotedCasesSerializer(serializers.ModelSerializer):
 
 
 class AllotedCasesSerializerForAdmin(serializers.ModelSerializer):
+    """ Serializer for allotted cases to the lawyer for admin"""
     class Meta:
         model = AllotedCases
         fields = '__all__'
