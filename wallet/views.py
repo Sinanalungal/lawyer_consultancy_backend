@@ -47,16 +47,14 @@ class AddFundsView(APIView):
                     },
                 ],
                 mode='payment',
-                success_url=(settings.DOMAIN_URL + 'user/wallet/' + \
-                             '?success={CHECKOUT_SESSION_ID}')
+                success_url=(settings.DOMAIN_URL + 'user/success' + '?checkout_id={CHECKOUT_SESSION_ID}') 
+                if request.user.role == 'user' else (settings.DOMAIN_URL + 'lawyer/success' + '?checkout_id={CHECKOUT_SESSION_ID}'),
+                # if request.user.role == 'user' else
+                # (settings.DOMAIN_URL + 'lawyer/wallet/' + '?success={CHECKOUT_SESSION_ID}') if request.user.role == 'lawyer' else (
+                #     settings.DOMAIN_URL + 'admin/wallet/' + '?success={CHECKOUT_SESSION_ID}'),
+                cancel_url=(settings.DOMAIN_URL + 'user/fail/')
                 if request.user.role == 'user' else
-                (settings.DOMAIN_URL + 'lawyer/wallet/' + '?success={CHECKOUT_SESSION_ID}') if request.user.role == 'lawyer' else (
-                    settings.DOMAIN_URL + 'admin/wallet/' + '?success={CHECKOUT_SESSION_ID}'),
-                cancel_url=(settings.DOMAIN_URL + 'user/wallet/' + \
-                            '?cancel={CHECKOUT_SESSION_ID}')
-                if request.user.role == 'user' else
-                (settings.DOMAIN_URL + 'lawyer/wallet/' + '?cancel={CHECKOUT_SESSION_ID}') if request.user.role == 'lawyer' else (
-                    settings.DOMAIN_URL + 'admin/wallet/' + '?cancel={CHECKOUT_SESSION_ID}'),
+                (settings.DOMAIN_URL + 'lawyer/fail/'),
                 metadata={
                     'user_id': request.user.id,
                     'payment_for': 'wallet',

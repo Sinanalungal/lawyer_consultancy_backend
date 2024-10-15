@@ -66,9 +66,6 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
-GRAPHENE = {
-    "SCHEMA": "server.schema.schema"
-}
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
@@ -236,3 +233,5 @@ CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
 
 # CELERY BEAT
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# DEFAULT_FILE_STORAGE =  'storages.backends.s3boto3.S3Boto3Storage'

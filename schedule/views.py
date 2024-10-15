@@ -228,9 +228,9 @@ class BookAppointmentView(APIView):
                         },
                     ],
                     mode='payment',
-                    success_url=settings.DOMAIN_URL + 'user/available-sessions/success' + \
+                    success_url=settings.DOMAIN_URL + 'user/success' + \
                     '?checkout_id={CHECKOUT_SESSION_ID}',
-                    cancel_url=settings.DOMAIN_URL + 'user/available-sessions/fail',
+                    cancel_url=settings.DOMAIN_URL + 'user/fail',
                     metadata={
                         'scheduling_uuid': scheduling_uuid,
                         'scheduling_date': scheduling_date_str,
@@ -522,8 +522,8 @@ class WalletAppointmentBooking(APIView):
                         ],
                         mode='payment',
                         success_url=settings.DOMAIN_URL + \
-                        'user/available-sessions/success?checkout_id={CHECKOUT_SESSION_ID}',
-                        cancel_url=settings.DOMAIN_URL + 'user/available-sessions/fail',
+                        'user/success?checkout_id={CHECKOUT_SESSION_ID}',
+                        cancel_url=settings.DOMAIN_URL + 'user/fail',
                         metadata={
                             'scheduling_uuid': scheduling_uuid,
                             'scheduling_date': scheduling_date_str,
