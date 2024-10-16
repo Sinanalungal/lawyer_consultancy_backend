@@ -1,9 +1,9 @@
-from rest_framework import status
+from rest_framework import status,generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import WalletTransactions, WithdrawingRequests, PaymentDetails
 from django.db.models import Sum
-from .serializers import WithdrawingRequestSerializer, WalletTransactionsSerializer, WalletDataSerializer
+from .serializers import WithdrawingRequestSerializer, WalletTransactionsSerializer, WalletDataSerializer,UserWalletDetailSerializerForAdmin
 from django.conf import settings
 import stripe
 from rest_framework.permissions import IsAuthenticated
@@ -13,7 +13,10 @@ import uuid
 from rest_framework import viewsets
 from decimal import Decimal
 from django.db import transaction
-
+from api.models import CustomUser
+from server.permissions import IsAdmin
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
 
 class AddFundsView(APIView):
     """
@@ -249,6 +252,29 @@ class WalletBalanceView(APIView):
 
         return Response({"balance": total_balance}, status=status.HTTP_200_OK)
 
+
+
+class UserWalletDetailView(generics.ListAPIView):
+    """
+    View to retrieve wallet details of all users excluding admin users.
+    """
+    queryset = CustomUser.objects.exclude(role='admin')
+    serializer_class = UserWalletDetailSerializerForAdmin
+    permission_classes = [IsAdmin]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['full_name', 'email']
+
+
+class UserWalletTransactionHistoryView(generics.ListAPIView):
+    """
+    View to retrieve the wallet transaction history of a specific user.
+    """
+    serializer_class = WalletTransactionsSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return WalletTransactions.objects.filter(user_id=user_id).order_by('-created_at')
 
 
 # from rest_framework import status
