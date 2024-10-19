@@ -107,10 +107,10 @@ COUNTRY_CODE = config('COUNTRY_CODE')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DATABASE_NAME'),
-        'USER': config('DATABASE_USER'),
-        'PASSWORD': config('DATABASE_PASSWORD'),
-        'HOST': config('DATABASE_HOST'),
+        'NAME': config('POSTGRES_DB'),
+        'USER': config('POSTGRES_USER'),
+        'PASSWORD': config('POSTGRES_PASSWORD'),
+        'HOST': config('POSTGRES_HOST'),
         'PORT': '5432'
     }
 }
@@ -177,15 +177,23 @@ USE_TZ = True
 #     "http://localhost:5173",
 # ]
 
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#         'CONFIG': {
+#             'hosts': [('localhost', 6379)],
+#         },
+#     },
+# }
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('localhost', 6379)],
+            'hosts': [(os.getenv('REDIS_URL'), 6379)],
         },
     },
 }
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -223,15 +231,34 @@ DOMAIN_URL = config("DOMAIN_URL")
 
 
 # CELERY SETTINGS
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+CELERY_BROKER_URL = config('REDIS_URL') 
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Kolkata'
+CELERY_RESULT_BACKEND = config('REDIS_URL')
 
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'
+# CELERY_ACCEPT_CONTENT = ['application/json']
+# CELERY_RESULT_SERIALIZER = 'json'
+# CELERY_TASK_SERIALIZER = 'json'
+# CELERY_TIMEZONE = 'Asia/Kolkata'
+
+# CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
 
 # CELERY BEAT
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
-# DEFAULT_FILE_STORAGE =  'storages.backends.s3boto3.S3Boto3Storage'
+DEFAULT_FILE_STORAGE =  'storages.backends.s3boto3.S3Boto3Storage'
+
+#AWS CONFIGURATIONS
+AWS_ACCESS_KEY_ID=config("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY=config("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME=config("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_REGION_NAME=config("AWS_S3_REGION_NAME")
+AWS_QUERYSTRING_EXPIRE=5
+AWS_S3_CUSTOM_DOMAIN=config("AWS_S3_CUSTOM_DOMAIN")
+
+AWS_CLOUDFRONT_KEY_ID = config("AWS_CLOUDFRONT_KEY_ID").strip()
+AWS_CLOUDFRONT_KEY = config("AWS_CLOUDFRONT_KEY").replace("\\n", "\n").encode('ascii').strip()

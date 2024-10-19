@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0 
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:14
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  redis:
+    image: redis:alpine 
+
+  celery:
+    build: .
+    command: celery -A server worker --loglevel=info --pool=solo
+    volumes:
+      - .:/app
+    environment:
+      - REDIS_URL=redis://redis:6379/0  
+    depends_on:
+      - db
+      - web
+      - redis
+
+volumes:
+  postgres_data:
