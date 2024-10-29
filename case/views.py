@@ -237,6 +237,7 @@ class SelectedCasesView(generics.GenericAPIView):
             return Response({"detail": "This case has already been selected by the lawyer"}, status=status.HTTP_400_BAD_REQUEST)
 
         self.perform_create(serializer, lawyer)
+        selected_case_obj=selected_case_obj.first()
         Notifications.objects.create(
             user_id=selected_case_obj.case_model.user.pk,
             title=f'Lawyer Selected a Case',

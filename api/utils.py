@@ -3,8 +3,8 @@ import urllib
 import requests
 from decouple import Config
 import jwt
-
-config = Config('.env')
+from django.conf import settings
+# config = Config('.env')
 
 
 def get_id_token_with_code_method_1(code):
@@ -38,8 +38,8 @@ def get_id_token_with_code_method_2(code):
     token_endpoint = "https://oauth2.googleapis.com/token"
     payload = {
         'code': code,
-        'client_id': config('CLIENT_ID'),
-        'client_secret': config('CLIENT_SECRET'),
+        'client_id': settings.CLIENT_ID,
+        'client_secret': settings.CLIENT_SECRET,
         'grant_type': 'authorization_code',
         'redirect_uri': "postmessage",
     }
