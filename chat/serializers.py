@@ -79,5 +79,6 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
     def get_audio(self, obj):
         if obj.audio:
-            return f"{config('BACKEND_URL')}{obj.audio.url}"
+            # return f"{config('BACKEND_URL')}{obj.audio.url}"
+            return f"{obj.audio.url}"
         return None

@@ -4,6 +4,7 @@ services:
   web:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
+    # command: daphne -b 0.0.0.0 -p 8000 server.asgi:application
     volumes:
       - .:/app
     ports:
@@ -13,6 +14,14 @@ services:
     depends_on:
       - db
       - redis
+  
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    command: listen --forward-to http://web:8000/schedule/webhook/
+    environment:
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      - web
 
   db:
     image: postgres:14
@@ -25,6 +34,8 @@ services:
 
   redis:
     image: redis:alpine 
+    ports:
+      - "6379:6379"
 
   celery:
     build: .

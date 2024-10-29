@@ -19,6 +19,7 @@ from .serializers import (
     SelectedCasesSerializer
 )
 from api.models import States, LawyerProfile
+from notifications.models import Notifications
 
 
 class CaseListCreateView(generics.ListCreateAPIView):
@@ -206,7 +207,7 @@ class SelectedCasesView(generics.GenericAPIView):
             Response: A response containing the selected cases or an error message.
         """
         case_id = request.query_params.get("case_id")
-        print(case_id)
+        # print(case_id)
         if case_id:
             selected_cases = self.queryset.filter(case_model_id=case_id)
             serializer = self.get_serializer(selected_cases, many=True)
@@ -230,11 +231,19 @@ class SelectedCasesView(generics.GenericAPIView):
             return Response({"detail": "Lawyer profile not found"}, status=status.HTTP_400_BAD_REQUEST)
 
         case_model_id = serializer.validated_data['case_model'].id
-
-        if SelectedCases.objects.filter(lawyer=lawyer, case_model_id=case_model_id).exists():
+        #------------------------------------
+        selected_case_obj = SelectedCases.objects.filter(lawyer=lawyer, case_model_id=case_model_id)
+        if selected_case_obj.exists():
             return Response({"detail": "This case has already been selected by the lawyer"}, status=status.HTTP_400_BAD_REQUEST)
 
         self.perform_create(serializer, lawyer)
+        Notifications.objects.create(
+            user_id=selected_case_obj.case_model.user.pk,
+            title=f'Lawyer Selected a Case',
+            description=f'{selected_case_obj.case_model.case_type} is selected by an lawyer.',
+            notify_time=timezone.now()
+        )
+        #----------------------------
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer, lawyer):
@@ -286,8 +295,15 @@ class CreateAllotedCaseView(generics.CreateAPIView):
         # case_model.is_listed = False
         case_model.status = 'Accepted'
         case_model.save()
-
         serializer = self.get_serializer(alloted_case)
+        #---------------------------
+        Notifications.objects.create(
+            user_id=alloted_case.selected_case.lawyer.user.pk,
+            title=f'An User Selected you to take the case',
+            description=f'User ALlocated {alloted_case.selected_case.case_model.case_type} Case to you.',
+            notify_time=timezone.now()
+        )
+        #--------------------------
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 

@@ -28,7 +28,9 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ['cyclehubonline.shop']
+ALLOWED_HOSTS = ['*']
+
 
 
 INSTALLED_APPS = [
@@ -66,7 +68,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
-
+# CSRF_TRUSTED_ORIGINS=['https://cyclehubonline.shop/']
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
@@ -114,6 +116,17 @@ DATABASES = {
         'PORT': '5432'
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'connect',
+#         'USER': 'postgres',
+#         'PASSWORD': '9207400638',
+#         'HOST': 'localhost',
+#         'PORT': '5432'
+#     }
+# }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -150,7 +163,7 @@ REST_FRAMEWORK = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://localhost:6379/1',
+        'LOCATION': 'redis://redis:6379/1',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
@@ -190,7 +203,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(os.getenv('REDIS_URL'), 6379)],
+            'hosts': [('redis', 6379)],
         },
     },
 }
@@ -257,8 +270,12 @@ AWS_ACCESS_KEY_ID=config("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY=config("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME=config("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME=config("AWS_S3_REGION_NAME")
-AWS_QUERYSTRING_EXPIRE=5
-AWS_S3_CUSTOM_DOMAIN=config("AWS_S3_CUSTOM_DOMAIN")
+AWS_QUERYSTRING_EXPIRE=10000
+# AWS_S3_CUSTOM_DOMAIN=config("AWS_S3_CUSTOM_DOMAIN")
 
-AWS_CLOUDFRONT_KEY_ID = config("AWS_CLOUDFRONT_KEY_ID").strip()
-AWS_CLOUDFRONT_KEY = config("AWS_CLOUDFRONT_KEY").replace("\\n", "\n").encode('ascii').strip()
+# AWS_CLOUDFRONT_KEY_ID = config("AWS_CLOUDFRONT_KEY_ID").strip()
+
+# raw_key = config('AWS_CLOUDFRONT_KEY', cast=str)
+
+# # Ensure proper formatting: strip whitespace and encode as ASCII
+# AWS_CLOUDFRONT_KEY = raw_key.replace('\\n', '\n').encode('ascii').strip()

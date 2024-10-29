@@ -146,7 +146,7 @@ class LawyerDashboardView(APIView):
 
         appointments_with_amount = non_canceled_appointments.annotate(
             amount_80_percent=ExpressionWrapper(
-                F('scheduling__price') * 0.8, output_field=FloatField())
+                F('scheduling__price') * 0.9, output_field=FloatField())
         )
 
         total_completed_sessions = non_canceled_appointments.count()
