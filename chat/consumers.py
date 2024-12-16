@@ -115,7 +115,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # print(obj.audio.url)
             response = {
                 'message': None,
-                'audio': f"{config('BACKEND_URL')}{obj.audio.url}",
+                'audio': f"{obj.audio.url}",
                 'video': None,
                 'image': None,
                 'send_by': send_by_id,
