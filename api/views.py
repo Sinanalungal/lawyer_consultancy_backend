@@ -158,6 +158,7 @@ class LoginWithGoogleView(APIView):
         if 'code' in request.data:
             code = request.data.get('code')
             id_token = get_id_token_with_code_method_2(code)
+            print(id_token)
             user_email = id_token.get('email')
             user = self.authenticate_or_create_user(
                 user_email, id_token.get('name'), id_token.get('at_hash'))
@@ -211,10 +212,20 @@ class UserRegistrationAPIView(APIView):
                 redis_conn.setex(expiration_key, 3600, expiration_seconds)
 
                 # Send OTP via message
-                obj = MessageHandler(
-                    serializer.validated_data['phone_number'], otp_code)
-                obj.send_otp_via_message()
-
+                # obj = MessageHandler(
+                #     serializer.validated_data['phone_number'], otp_code)
+                # obj.send_otp_via_message()
+                subject = 'YOUR OTP'
+                message = f'Your Lawyer Link OTP is :{otp_code}'
+                recipient_list = [email]
+                
+                send_mail(
+                    subject,
+                    message,
+                    settings.EMAIL_HOST_USER,
+                    recipient_list,
+                    fail_silently=False,
+                )
                 return Response({
                     "data": {
                         'email': email,
@@ -303,8 +314,20 @@ class ResendOtp(APIView):
                 expiration_seconds = int(expiration_time.timestamp())
                 redis_conn.setex(expiration_key, 3600, expiration_seconds)
 
-                obj = MessageHandler(phone_number, otp_code)
-                obj.send_otp_via_message()
+                # obj = MessageHandler(phone_number, otp_code)
+                # obj.send_otp_via_message()
+
+                subject = 'YOUR OTP'
+                message = f'Your Lawyer Link OTP is :{otp_code}'
+                recipient_list = [email]
+                
+                send_mail(
+                    subject,
+                    message,
+                    settings.EMAIL_HOST_USER,
+                    recipient_list,
+                    fail_silently=False,
+                )
 
                 return Response({
                     "message": "OTP resent successfully",
@@ -537,8 +560,19 @@ class OtpSendGoogleAuthView(APIView):
             expiration_seconds = int(expiration_time.timestamp())
             redis_conn.setex(expiration_key, 3600, expiration_seconds)
 
-            obj = MessageHandler(phone_number, otp_code)
-            obj.send_otp_via_message()
+            # obj = MessageHandler(phone_number, otp_code)
+            # obj.send_otp_via_message()
+            subject = 'YOUR OTP'
+            message = f'Your Lawyer Link OTP is :{otp_code}'
+            recipient_list = [email]
+            
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,
+                recipient_list,
+                fail_silently=False,
+            )
 
             return Response(
                 {"message": "OTP Resended Successfully", 'timer': expiration_time},
